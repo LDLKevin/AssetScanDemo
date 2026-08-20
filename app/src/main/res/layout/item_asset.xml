@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/item_root"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:padding="14dp"
+    android:layout_marginHorizontal="4dp"
+    android:layout_marginVertical="4dp"
+    android:background="@drawable/bg_card_item"
+    android:elevation="1dp">
+
+    <!-- 狀態圓點 -->
+    <View
+        android:id="@+id/view_status"
+        android:layout_width="10dp"
+        android:layout_height="10dp"
+        android:layout_gravity="top"
+        android:layout_marginTop="6dp"
+        android:layout_marginEnd="12dp"
+        android:background="@drawable/circle_unchecked" />
+
+    <!-- 資訊區 -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <!-- 編號 -->
+        <TextView
+            android:id="@+id/tv_id"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_primary"
+            android:fontFamily="sans-serif-medium"
+            android:layout_marginBottom="6dp" />
+
+        <!-- 資產名稱 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="2dp">
+            <TextView
+                android:layout_width="56dp"
+                android:layout_height="wrap_content"
+                android:text="名稱"
+                android:textSize="12sp"
+                android:textColor="@color/text_hint" />
+            <TextView
+                android:id="@+id/tv_name"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:textSize="13sp"
+                android:textColor="@color/text_primary" />
+        </LinearLayout>
+
+        <!-- 歸屬部門 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="2dp">
+            <TextView
+                android:layout_width="56dp"
+                android:layout_height="wrap_content"
+                android:text="部門"
+                android:textSize="12sp"
+                android:textColor="@color/text_hint" />
+            <TextView
+                android:id="@+id/tv_department"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:textSize="13sp"
+                android:textColor="@color/text_primary" />
+        </LinearLayout>
+
+        <!-- 地點 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <TextView
+                android:layout_width="56dp"
+                android:layout_height="wrap_content"
+                android:text="地點"
+                android:textSize="12sp"
+                android:textColor="@color/text_hint" />
+            <TextView
+                android:id="@+id/tv_location"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:textSize="13sp"
+                android:textColor="@color/text_primary" />
+        </LinearLayout>
+
+        <!-- 盤點時間 -->
+        <TextView
+            android:id="@+id/tv_checked_at"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="11sp"
+            android:textColor="@color/status_success"
+            android:layout_marginTop="6dp"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+    <!-- 已盤點/不相符標籤 -->
+    <TextView
+        android:id="@+id/tv_tag"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:layout_marginTop="2dp"
+        android:paddingHorizontal="10dp"
+        android:paddingVertical="4dp"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
+</LinearLayout>

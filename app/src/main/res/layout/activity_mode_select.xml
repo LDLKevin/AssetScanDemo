@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/mode_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/bg_main"
+    android:gravity="center"
+    android:padding="32dp">
+
+    <!-- Logo 區（之後可放長榮 Logo 圖檔，先用文字代替）-->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="EVERGREEN"
+        android:textColor="@color/evergreen_primary"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:letterSpacing="0.3"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="盤點作業系統"
+        android:textColor="@color/text_primary"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        android:fontFamily="sans-serif-medium" />
+
+    <View
+        android:layout_width="48dp"
+        android:layout_height="3dp"
+        android:background="@color/evergreen_accent"
+        android:layout_marginTop="12dp"
+        android:layout_marginBottom="12dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="請選擇作業流程"
+        android:textColor="@color/text_secondary"
+        android:textSize="14sp"
+        android:layout_marginBottom="56dp" />
+
+    <!-- 全盤按鈕 -->
+    <LinearLayout
+        android:id="@+id/btn_full"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/btn_primary"
+        android:padding="28dp"
+        android:gravity="center"
+        android:clickable="true"
+        android:focusable="true"
+        android:elevation="2dp"
+        android:layout_marginBottom="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="全盤"
+            android:textColor="@color/text_on_primary"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif-medium" />
+
+    </LinearLayout>
+
+    <!-- 抽盤按鈕 -->
+    <LinearLayout
+        android:id="@+id/btn_sampling"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/btn_secondary"
+        android:padding="28dp"
+        android:gravity="center"
+        android:clickable="true"
+        android:focusable="true"
+        android:elevation="2dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="抽盤"
+            android:textColor="@color/text_on_primary"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif-medium" />
+
+    </LinearLayout>
+
+</LinearLayout>

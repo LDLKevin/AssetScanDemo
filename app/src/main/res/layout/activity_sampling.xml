@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/sampling_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_main"
+    android:orientation="vertical">
+
+    <!-- ══ Header ════════════════════════════════════════ -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/bg_card"
+        android:elevation="2dp"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="EVERGREEN"
+            android:textColor="@color/evergreen_primary"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.3" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="2dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="🔍 抽盤作業"
+                android:textColor="@color/text_primary"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:fontFamily="sans-serif-medium" />
+
+            <TextView
+                android:id="@+id/tv_progress"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="尚未載入"
+                android:textColor="@color/evergreen_primary"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="4dp"
+                android:background="@drawable/bg_badge" />
+        </LinearLayout>
+
+        <!-- 跳轉按鈕列 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:gravity="end"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btn_jump_prev"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="↑ 上筆未盤"
+                android:textColor="@color/text_on_primary"
+                android:textSize="11sp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="6dp"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/btn_accent"
+                android:enabled="false" />
+
+            <Button
+                android:id="@+id/btn_jump_next"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="↓ 下筆未盤"
+                android:textColor="@color/text_on_primary"
+                android:textSize="11sp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="6dp"
+                android:background="@drawable/btn_accent"
+                android:enabled="false" />
+        </LinearLayout>
+
+        <!-- 載入按鈕 -->
+        <Button
+            android:id="@+id/btn_load"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/btn_primary"
+            android:textColor="@color/text_on_primary"
+            android:text="載入 CSV" />
+
+    </LinearLayout>
+
+    <!-- ══ 內容區 ════════════════════════════════════════ -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:padding="16dp"
+        android:clipToPadding="false">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card"
+            android:orientation="vertical"
+            android:padding="20dp">
+
+            <!-- 目前位置 -->
+            <TextView
+                android:id="@+id/tv_position"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="第 - 筆 / 共 - 筆"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp"
+                android:layout_marginBottom="8dp" />
+
+            <!-- 比對結果（顏色 + 大字）-->
+            <TextView
+                android:id="@+id/tv_result"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="待掃描"
+                android:textColor="@color/text_secondary"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:padding="16dp"
+                android:background="@drawable/bg_field"
+                android:layout_marginBottom="20dp" />
+
+            <!-- 詳細資料表單 -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="財產編號"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
+            <TextView
+                android:id="@+id/tv_id"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:padding="10dp"
+                android:background="@drawable/bg_field"
+                android:layout_marginBottom="12dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="財產名稱"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
+            <TextView
+                android:id="@+id/tv_name"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/text_primary"
+                android:textSize="15sp"
+                android:padding="10dp"
+                android:background="@drawable/bg_field"
+                android:layout_marginBottom="12dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="歸屬部門"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
+            <TextView
+                android:id="@+id/tv_department"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/text_primary"
+                android:textSize="15sp"
+                android:padding="10dp"
+                android:background="@drawable/bg_field"
+                android:layout_marginBottom="12dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="地點"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
+            <TextView
+                android:id="@+id/tv_location"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/text_primary"
+                android:textSize="15sp"
+                android:padding="10dp"
+                android:background="@drawable/bg_field"
+                android:layout_marginBottom="20dp" />
+
+            <!-- 操作按鈕列 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="8dp">
+
+                <Button
+                    android:id="@+id/btn_prev"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="4dp"
+                    android:text="上一筆"
+                    android:textColor="@color/text_on_primary"
+                    android:background="@drawable/btn_secondary"
+                    android:enabled="false" />
+
+                <Button
+                    android:id="@+id/btn_next"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="下一筆"
+                    android:textColor="@color/text_on_primary"
+                    android:background="@drawable/btn_secondary"
+                    android:enabled="false" />
+            </LinearLayout>
+
+            <Button
+                android:id="@+id/btn_scan"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="開始掃描"
+                android:textColor="@color/text_on_primary"
+                android:background="@drawable/btn_primary"
+                android:enabled="false" />
+
+            <Button
+                android:id="@+id/btn_done"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="完成"
+                android:textColor="@color/text_on_primary"
+                android:background="@drawable/btn_accent" />
+
+        </LinearLayout>
+    </ScrollView>
+
+</LinearLayout>

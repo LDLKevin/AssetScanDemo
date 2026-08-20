@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="evergreen_primary">#005A30</color>
+    <color name="evergreen_primary_dark">#003D20</color>
+    <color name="evergreen_primary_light">#1A7A4F</color>
+
+    <!-- 輔色 -->
+    <color name="evergreen_accent">#F5A623</color>     <!-- 金黃，呼應長榮標誌 -->
+    <color name="evergreen_secondary">#4A8B6F</color>  <!-- 中綠 -->
+
+    <!-- 背景色 -->
+    <color name="bg_main">#F5F8F6</color>              <!-- 淡綠灰背景 -->
+    <color name="bg_card">#FFFFFF</color>
+    <color name="bg_field">#F0F4F1</color>             <!-- 表單欄位背景 -->
+
+    <!-- 狀態色 -->
+    <color name="status_success">#005A30</color>       <!-- 已盤點，綠色 -->
+    <color name="status_success_bg">#E8F3EC</color>
+    <color name="status_warning">#D97706</color>       <!-- 不相符，琥珀色 -->
+    <color name="status_warning_bg">#FEF3E2</color>
+    <color name="status_error">#B91C1C</color>
+    <color name="status_error_bg">#FEE2E2</color>
+
+    <!-- 文字色 -->
+    <color name="text_primary">#1A2E25</color>
+    <color name="text_secondary">#5A6E63</color>
+    <color name="text_hint">#9CA8A2</color>
+    <color name="text_on_primary">#FFFFFF</color>
+
+    <!-- 按鈕色 -->
+    <color name="btn_primary">#005A30</color>
+    <color name="btn_secondary">#4A8B6F</color>
+    <color name="btn_disabled">#C7D2CC</color>
+</resources>
