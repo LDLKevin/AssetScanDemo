@@ -279,7 +279,7 @@ public class SamplingActivity extends AppCompatActivity {
                 "yyyy-MM-dd HH:mm:ss", Locale.getDefault()
         ).format(new Date());
 
-        saveCsv();
+        AssetRepository.getInstance().markDirty(); // 只改記憶體，落檔延到 onPause/onStop
 
         // 重新顯示這一筆，更新 UI
         showAssetAt(currentIndex);
@@ -289,15 +289,12 @@ public class SamplingActivity extends AppCompatActivity {
                 Toast.LENGTH_SHORT).show();
     }
 
-    // ── 寫回 CSV ─────────────────────────────────────────
-    private void saveCsv() {
+    // ── 定點寫檔 ─────────────────────────────────────────
+    // 只有記憶體有未落檔變更時才真正寫一次（背景執行緒）。
+    private void flushCsvAsync() {
         new Thread(() -> {
             try {
-                CsvManager.write(
-                        getContentResolver(),
-                        AssetRepository.getInstance().getCsvUri(),
-                        assets
-                );
+                AssetRepository.getInstance().flush(getContentResolver());
             } catch (Exception e) {
                 runOnUiThread(() ->
                         Toast.makeText(this,
@@ -307,5 +304,17 @@ public class SamplingActivity extends AppCompatActivity {
                 Log.e(TAG, "CSV 寫入失敗", e);
             }
         }).start();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        flushCsvAsync();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        flushCsvAsync();
     }
 }

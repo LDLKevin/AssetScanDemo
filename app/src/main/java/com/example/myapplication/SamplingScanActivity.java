@@ -28,6 +28,7 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.example.myapplication.logic.AssetIdFormat;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.zxing.BinaryBitmap;
 import com.google.zxing.DecodeHintType;
@@ -228,8 +229,8 @@ public class SamplingScanActivity extends AppCompatActivity {
             setResult(RESULT_OK, intent);
             if (navigator_vibrate()) { /* 觸發震動已包在方法內 */ }
             finish();
-        } else {
-            // ❌ 不是當前要找的資產
+        } else if (AssetIdFormat.isValid(scannedId)) {
+            // ❌ 是別的（成格式的）資產，才提示；不成格式的雜訊視為誤觸，靜默忽略
             long now = System.currentTimeMillis();
             if (now - lastWrongScanToast > TOAST_COOLDOWN_MS) {
                 lastWrongScanToast = now;

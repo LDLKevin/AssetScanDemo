@@ -30,9 +30,10 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 
-import com.example.myapplication.data.CsvManager;
 import com.example.myapplication.model.Asset;
 import com.example.myapplication.data.AssetRepository;
+import com.example.myapplication.logic.AssetIdFormat;
+import com.example.myapplication.logic.ScanClassifier;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.zxing.BinaryBitmap;
 import com.google.zxing.DecodeHintType;
@@ -56,7 +57,8 @@ public class ScanActivity extends AppCompatActivity {
 
     private static final String TAG = "ScanActivity";
     private static final int REQ_CAMERA = 100;
-    private static final long COOLDOWN_MS = 5000;
+    // 結果停留畫面已由 history/displayAsset 承載，冷卻只需防手震連拍，故縮短。
+    private static final long COOLDOWN_MS = 900;
 
     private PreviewView previewView;
     private TextView tvWarning;
@@ -239,47 +241,53 @@ public class ScanActivity extends AppCompatActivity {
     }
 
     private void handleScanResult(String raw) {
-        if (raw.equals(lastScannedRaw) && System.currentTimeMillis() - lastScanTime < COOLDOWN_MS * 2) {
+        // 同一張 QR 短時間內去重（避免停在鏡頭前被連續記錄）
+        long now = System.currentTimeMillis();
+        if (raw.equals(lastScannedRaw) && now - lastScanTime < COOLDOWN_MS * 2) {
             return;
         }
-        lastScannedRaw = raw;
-        lastScanTime   = System.currentTimeMillis();
 
-        String[] parts = raw.split(";");
-        String targetId   = parts.length > 0 ? parts[0].trim() : "";
-        String name       = parts.length > 1 ? parts[1].trim() : "";
-        String department = parts.length > 2 ? parts[2].trim() : "";
-        String location   = parts.length > 3 ? parts[3].trim() : "";
+        ScanClassifier.Result r =
+                ScanClassifier.classify(raw, assets, AssetIdFormat::isValid);
 
-        if (targetId.isEmpty()) return;
-
-        Asset matched = null;
-        for (Asset a : assets) {
-            if (a.id.equals(targetId)) { matched = a; break; }
+        // 誤觸：不成格式 → 靜默忽略，不動冷卻、不刷新畫面
+        if (r.outcome == ScanClassifier.Outcome.IGNORED_INVALID) {
+            return;
         }
 
-        if (matched != null) {
-            boolean isMatched = matched.department.equals(department)
-                    && matched.location.equals(location);
+        // 到這裡才算一次有效掃描，才起算冷卻
+        lastScannedRaw = raw;
+        lastScanTime   = now;
 
-            matched.status    = isMatched ? Asset.Status.MATCHED : Asset.Status.UNMATCHED;
-            matched.checkedAt = currentTime();
-            saveCsv();
+        switch (r.outcome) {
+            case MATCHED:
+            case UNMATCHED: {
+                Asset matched = r.asset;
+                boolean isMatched = r.outcome == ScanClassifier.Outcome.MATCHED;
+                matched.status    = isMatched ? Asset.Status.MATCHED : Asset.Status.UNMATCHED;
+                matched.checkedAt = currentTime();
+                AssetRepository.getInstance().markDirty(); // 只改記憶體，落檔延到 onPause/onStop
 
-            history.add(matched);
-            historyIndex = history.size() - 1;
-            displayAsset(matched, false);
+                history.add(matched);
+                historyIndex = history.size() - 1;
+                displayAsset(matched, false);
 
-            if (isMatched) {
-                Toast.makeText(this, "✅ " + targetId + " 盤點成功", Toast.LENGTH_SHORT).show();
-            } else {
-                Toast.makeText(this, "⚠️ " + targetId + " 部門或地點不相符", Toast.LENGTH_LONG).show();
+                if (isMatched) {
+                    Toast.makeText(this, "✅ " + r.id + " 盤點成功", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(this, "⚠️ " + r.id + " 部門或地點不相符", Toast.LENGTH_LONG).show();
+                }
+                break;
             }
-        } else {
-            Asset newAsset = new Asset(targetId, name, department, location,
-                    Asset.Status.UNCHECKED, "");
-            displayAsset(newAsset, true);
-            Toast.makeText(this, "⚠️ 未列入清單", Toast.LENGTH_SHORT).show();
+            case SURPLUS: {
+                Asset newAsset = new Asset(r.id, r.name, r.department, r.location,
+                        Asset.Status.UNCHECKED, "");
+                displayAsset(newAsset, true);
+                Toast.makeText(this, "⚠️ 未列入清單", Toast.LENGTH_SHORT).show();
+                break;
+            }
+            default:
+                break;
         }
 
         updateNavButtons();
@@ -353,7 +361,7 @@ public class ScanActivity extends AppCompatActivity {
             assets.add(newAsset);
             history.add(newAsset);
             historyIndex = history.size() - 1;
-            saveCsv();
+            AssetRepository.getInstance().markDirty();
             Toast.makeText(this, "✅ 已新增：" + id, Toast.LENGTH_SHORT).show();
 
             isNewAsset = false;
@@ -367,7 +375,7 @@ public class ScanActivity extends AppCompatActivity {
             if (target != null) {
                 target.department = department;
                 target.location   = location;
-                saveCsv();
+                AssetRepository.getInstance().markDirty();
                 Toast.makeText(this, "✅ 已更新：" + id, Toast.LENGTH_SHORT).show();
                 isEdited = false;
                 btnWrite.setText("寫入");
@@ -379,15 +387,11 @@ public class ScanActivity extends AppCompatActivity {
         updateNavButtons();
     }
 
-    // 寫回 CSV
-    private void saveCsv() {
+    // 定點寫檔：只有記憶體有未落檔變更時才真正寫一次（背景執行緒）。
+    private void flushCsvAsync() {
         new Thread(() -> {
             try {
-                CsvManager.write(
-                        getContentResolver(),
-                        AssetRepository.getInstance().getCsvUri(),
-                        assets
-                );
+                AssetRepository.getInstance().flush(getContentResolver());
             } catch (Exception e) {
                 runOnUiThread(() ->
                         Toast.makeText(this,
@@ -397,6 +401,18 @@ public class ScanActivity extends AppCompatActivity {
                 Log.e(TAG, "CSV 寫入失敗", e);
             }
         }).start();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        flushCsvAsync();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        flushCsvAsync();
     }
 
     private String currentTime() {
