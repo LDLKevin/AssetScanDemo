@@ -1,5 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
+    // Kotlin 2.0+ 的 Compose 編譯器改由這個外掛提供（版本綁 Kotlin，見 libs.versions.toml）
+    alias(libs.plugins.compose.compiler)
 }
 
 android {
@@ -20,6 +22,10 @@ android {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    buildFeatures {
+        compose true
+    }
+
     buildTypes {
         release {
             minifyEnabled false
@@ -34,6 +40,14 @@ android {
         exclude 'META-INF/*.version'
         exclude 'META-INF/LICENSE*'
         exclude 'META-INF/NOTICE*'
+    }
+}
+
+// AGP 9 內建 Kotlin 支援，透過這個頂層 kotlin 擴充設定編譯選項。
+// jvmTarget 對齊上面 compileOptions 的 Java 11，避免 Java/Kotlin JVM 目標不一致的編譯錯誤。
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
     }
 }
 
@@ -56,6 +70,15 @@ dependencies {
     implementation libs.material
     implementation libs.activity
     implementation libs.constraintlayout
+
+    // Jetpack Compose（BOM 統一管理版本，個別依賴不寫版號）
+    implementation platform(libs.compose.bom)
+    implementation libs.compose.ui
+    implementation libs.compose.ui.graphics
+    implementation libs.compose.ui.tooling.preview
+    implementation libs.compose.material3
+    implementation libs.activity.compose
+    debugImplementation libs.compose.ui.tooling
     testImplementation libs.junit
     androidTestImplementation libs.ext.junit
     androidTestImplementation libs.espresso.core
