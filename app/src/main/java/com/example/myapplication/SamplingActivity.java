@@ -24,10 +24,7 @@ import com.example.myapplication.logic.ScanClassifier;
 import com.example.myapplication.logic.ScannedTag;
 import com.example.myapplication.model.Asset;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 
 public class SamplingActivity extends AppCompatActivity {
 
@@ -271,12 +268,9 @@ public class SamplingActivity extends AppCompatActivity {
         // 比對部門和地點：走共用規則，避免與全盤漂移
         boolean isMatched = ScanClassifier.matches(target, tag);
 
-        target.status    = isMatched ? Asset.Status.MATCHED : Asset.Status.UNMATCHED;
-        target.checkedAt = new SimpleDateFormat(
-                "yyyy-MM-dd HH:mm:ss", Locale.getDefault()
-        ).format(new Date());
-
-        AssetRepository.getInstance().markDirty(); // 只改記憶體，落檔延到 onPause/onStop
+        // 只改記憶體並標記待落檔，落檔延到 onPause/onStop
+        AssetRepository.getInstance().recordCheck(target,
+                isMatched ? Asset.Status.MATCHED : Asset.Status.UNMATCHED);
 
         // 重新顯示這一筆，更新 UI
         showAssetAt(currentIndex);

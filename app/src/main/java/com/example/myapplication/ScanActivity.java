@@ -26,11 +26,8 @@ import com.example.myapplication.logic.AssetIdFormat;
 import com.example.myapplication.logic.ScanClassifier;
 import com.example.myapplication.model.Asset;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 
 public class ScanActivity extends AppCompatActivity {
 
@@ -161,9 +158,9 @@ public class ScanActivity extends AppCompatActivity {
             case UNMATCHED: {
                 Asset matched = r.asset;
                 boolean isMatched = r.outcome == ScanClassifier.Outcome.MATCHED;
-                matched.status    = isMatched ? Asset.Status.MATCHED : Asset.Status.UNMATCHED;
-                matched.checkedAt = currentTime();
-                AssetRepository.getInstance().markDirty(); // 只改記憶體，落檔延到 onPause/onStop
+                // 只改記憶體並標記待落檔，落檔延到 onPause/onStop
+                AssetRepository.getInstance().recordCheck(matched,
+                        isMatched ? Asset.Status.MATCHED : Asset.Status.UNMATCHED);
 
                 history.add(matched);
                 historyIndex = history.size() - 1;
@@ -246,13 +243,12 @@ public class ScanActivity extends AppCompatActivity {
         String location   = etLocation.getText().toString().trim();
 
         if (isNewAsset) {
-            // 新增財產：直接視為已盤點且相符
+            // 新增財產：直接視為已盤點且相符（狀態、時間、加入清單、dirty 皆由 repository 處理）
             Asset newAsset = new Asset(id, name, department, location,
-                    Asset.Status.MATCHED, currentTime());
-            assets.add(newAsset);
+                    Asset.Status.UNCHECKED, "");
+            AssetRepository.getInstance().addAsMatched(newAsset);
             history.add(newAsset);
             historyIndex = history.size() - 1;
-            AssetRepository.getInstance().markDirty();
             Toast.makeText(this, "✅ 已新增：" + id, Toast.LENGTH_SHORT).show();
 
             isNewAsset = false;
@@ -264,9 +260,7 @@ public class ScanActivity extends AppCompatActivity {
                 if (a.id.equals(id)) { target = a; break; }
             }
             if (target != null) {
-                target.department = department;
-                target.location   = location;
-                AssetRepository.getInstance().markDirty();
+                AssetRepository.getInstance().recordEdit(target, department, location);
                 Toast.makeText(this, "✅ 已更新：" + id, Toast.LENGTH_SHORT).show();
                 isEdited = false;
                 btnWrite.setText("寫入");
@@ -304,11 +298,6 @@ public class ScanActivity extends AppCompatActivity {
     protected void onStop() {
         super.onStop();
         flushCsvAsync();
-    }
-
-    private String currentTime() {
-        return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-                .format(new Date());
     }
 
     @Override

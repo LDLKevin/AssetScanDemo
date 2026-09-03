@@ -4,7 +4,10 @@ import android.content.ContentResolver;
 
 import com.example.myapplication.model.Asset;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 // 單例：當前載入的財產清單 = 記憶體資料源，同時是寫檔的擁有者。
 // 掃描／寫入當下只改記憶體並 markDirty()，實際寫檔延到頁面 onPause()/onStop() 時 flush()，
@@ -23,16 +26,46 @@ public class AssetRepository {
         return instance;
     }
 
+    /** 供測試建立獨立實例；App 走 {@link #getInstance()}。 */
+    public AssetRepository() {}
+
     public List<Asset> getAssets() { return assets; }
     public void setAssets(List<Asset> assets) { this.assets = assets; }
 
     public android.net.Uri getCsvUri() { return csvUri; }
     public void setCsvUri(android.net.Uri uri) { this.csvUri = uri; }
 
-    /** 標記記憶體已變更、待落檔。 */
-    public void markDirty() { dirty = true; }
-
     public boolean isDirty() { return dirty; }
+
+    // ── 寫入動詞：mutation 與 dirty 標記合成單一操作 ──────────────
+    // 呼叫端不再「改欄位 + 另外 markDirty()」，避免漏標導致 flush 跳過而漏存檔。
+
+    /** 命中：標記盤點狀態、蓋上盤點時間、標記待落檔。 */
+    public void recordCheck(Asset asset, Asset.Status status) {
+        asset.status    = status;
+        asset.checkedAt = now();
+        dirty = true;
+    }
+
+    /** 盤盈寫入：標記為已盤點相符、蓋時間、加入清單、標記待落檔。 */
+    public void addAsMatched(Asset asset) {
+        asset.status    = Asset.Status.MATCHED;
+        asset.checkedAt = now();
+        if (assets != null) assets.add(asset);
+        dirty = true;
+    }
+
+    /** 編輯既有財產的部門／地點，標記待落檔（不動 checkedAt）。 */
+    public void recordEdit(Asset asset, String department, String location) {
+        asset.department = department;
+        asset.location   = location;
+        dirty = true;
+    }
+
+    private static String now() {
+        return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+                .format(new Date());
+    }
 
     /**
      * 若有未落檔變更則寫一次檔（含 Big5 編碼、序列化先行）。
