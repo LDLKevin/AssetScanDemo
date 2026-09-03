@@ -20,6 +20,8 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.example.myapplication.data.AssetRepository;
 import com.example.myapplication.data.CsvManager;
+import com.example.myapplication.logic.ScanClassifier;
+import com.example.myapplication.logic.ScannedTag;
 import com.example.myapplication.model.Asset;
 
 import java.text.SimpleDateFormat;
@@ -258,21 +260,16 @@ public class SamplingActivity extends AppCompatActivity {
 
         Asset target = assets.get(currentIndex);
 
-        // 拆解 QR Code
-        String[] parts = raw.split(";");
-        String scannedId         = parts.length > 0 ? parts[0].trim() : "";
-        String scannedDepartment = parts.length > 2 ? parts[2].trim() : "";
-        String scannedLocation   = parts.length > 3 ? parts[3].trim() : "";
+        ScannedTag tag = ScannedTag.parse(raw);
 
-        // 雙重保險：理論上 SamplingScanActivity 已經過濾掉非目標的資產
-        if (!scannedId.equals(target.id)) {
+        // 雙重保險（政策）：理論上 SamplingScanActivity 已經過濾掉非目標的資產
+        if (!tag.id.equals(target.id)) {
             Toast.makeText(this, "掃描結果與目標不符", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // 比對部門和地點
-        boolean isMatched = target.department.equals(scannedDepartment)
-                && target.location.equals(scannedLocation);
+        // 比對部門和地點：走共用規則，避免與全盤漂移
+        boolean isMatched = ScanClassifier.matches(target, tag);
 
         target.status    = isMatched ? Asset.Status.MATCHED : Asset.Status.UNMATCHED;
         target.checkedAt = new SimpleDateFormat(

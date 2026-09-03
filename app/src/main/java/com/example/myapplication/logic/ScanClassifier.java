@@ -48,15 +48,12 @@ public final class ScanClassifier {
     private ScanClassifier() {}
 
     public static Result classify(String raw, List<Asset> assets, IdFormatValidator validator) {
-        String[] parts = raw == null ? new String[0] : raw.split(";");
-        String id         = parts.length > 0 ? parts[0].trim() : "";
-        String name       = parts.length > 1 ? parts[1].trim() : "";
-        String department = parts.length > 2 ? parts[2].trim() : "";
-        String location   = parts.length > 3 ? parts[3].trim() : "";
+        ScannedTag tag = ScannedTag.parse(raw);
+        String id = tag.id;
 
         // 誤觸：id 空或不成格式 → 靜默忽略
         if (id.isEmpty() || validator == null || !validator.isValid(id)) {
-            return new Result(Outcome.IGNORED_INVALID, null, id, name, department, location);
+            return new Result(Outcome.IGNORED_INVALID, null, id, tag.name, tag.department, tag.location);
         }
 
         Asset matched = null;
@@ -71,13 +68,20 @@ public final class ScanClassifier {
 
         // 格式正確但不在清單 → 盤盈
         if (matched == null) {
-            return new Result(Outcome.SURPLUS, null, id, name, department, location);
+            return new Result(Outcome.SURPLUS, null, id, tag.name, tag.department, tag.location);
         }
 
-        boolean isMatched = equalsSafe(matched.department, department)
-                && equalsSafe(matched.location, location);
-        Outcome outcome = isMatched ? Outcome.MATCHED : Outcome.UNMATCHED;
-        return new Result(outcome, matched, id, name, department, location);
+        Outcome outcome = matches(matched, tag) ? Outcome.MATCHED : Outcome.UNMATCHED;
+        return new Result(outcome, matched, id, tag.name, tag.department, tag.location);
+    }
+
+    /**
+     * 共用相符規則：財產與掃到的標籤在部門與地點皆相等（null 安全）。
+     * 全盤 {@link #classify} 與抽盤共用，讓比對規則只住一處、不會漂移。
+     */
+    public static boolean matches(Asset asset, ScannedTag tag) {
+        return equalsSafe(asset.department, tag.department)
+                && equalsSafe(asset.location, tag.location);
     }
 
     private static boolean equalsSafe(String a, String b) {

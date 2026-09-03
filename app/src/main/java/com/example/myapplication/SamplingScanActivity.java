@@ -21,6 +21,7 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.example.myapplication.camera.QrScanner;
 import com.example.myapplication.logic.AssetIdFormat;
+import com.example.myapplication.logic.ScannedTag;
 
 public class SamplingScanActivity extends AppCompatActivity {
 
@@ -137,7 +138,7 @@ public class SamplingScanActivity extends AppCompatActivity {
 
     // ── 掃到結果 ────────────────────────────────────────
     private void handleScanResult(String raw) {
-        String scannedId = raw.split(";")[0].trim();
+        String scannedId = ScannedTag.parse(raw).id;
 
         if (scannedId.equals(targetId)) {
             // ✅ 正確的資產，回傳結果

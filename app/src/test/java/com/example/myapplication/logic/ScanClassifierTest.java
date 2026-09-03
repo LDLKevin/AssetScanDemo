@@ -1,8 +1,10 @@
 package com.example.myapplication.logic;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 import com.example.myapplication.model.Asset;
 
@@ -106,5 +108,40 @@ public class ScanClassifierTest {
 
         assertEquals(ScanClassifier.Outcome.MATCHED, r.outcome);
         assertSame(list.get(2), r.asset);
+    }
+
+    // ── 共用相符規則 matches()（全盤與抽盤共用）─────────────
+
+    @Test
+    public void matches_trueWhenDeptAndLocationEqual() {
+        Asset asset = new Asset("ASSET001", "辦公桌", "財務部", "一樓", Asset.Status.UNCHECKED, "");
+        ScannedTag tag = ScannedTag.parse("ASSET001;辦公桌;財務部;一樓");
+        assertTrue(ScanClassifier.matches(asset, tag));
+    }
+
+    @Test
+    public void matches_falseWhenDepartmentDiffers() {
+        Asset asset = new Asset("ASSET001", "辦公桌", "財務部", "一樓", Asset.Status.UNCHECKED, "");
+        ScannedTag tag = ScannedTag.parse("ASSET001;辦公桌;總務科;一樓");
+        assertFalse(ScanClassifier.matches(asset, tag));
+    }
+
+    @Test
+    public void matches_falseWhenLocationDiffers() {
+        Asset asset = new Asset("ASSET001", "辦公桌", "財務部", "一樓", Asset.Status.UNCHECKED, "");
+        ScannedTag tag = ScannedTag.parse("ASSET001;辦公桌;財務部;三樓");
+        assertFalse(ScanClassifier.matches(asset, tag));
+    }
+
+    @Test
+    public void matches_trueWhenBothEmpty_nullSafe() {
+        // 財產欄位為 null、標籤解析為空字串 → 視為不相等？equalsSafe：null vs "" 不等
+        Asset nullFields = new Asset("EMPTY001", "無標地資產", null, null, Asset.Status.UNCHECKED, "");
+        ScannedTag emptyTag = ScannedTag.parse("EMPTY001");
+        assertFalse(ScanClassifier.matches(nullFields, emptyTag));
+
+        // 財產空字串、標籤空字串 → 相等
+        Asset emptyFields = new Asset("EMPTY001", "無標地資產", "", "", Asset.Status.UNCHECKED, "");
+        assertTrue(ScanClassifier.matches(emptyFields, emptyTag));
     }
 }
