@@ -4,8 +4,6 @@ import android.Manifest;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.Bundle;
-import android.text.Editable;
-import android.text.TextWatcher;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -14,14 +12,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.OptIn;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.camera.core.CameraSelector;
-import androidx.camera.core.ExperimentalGetImage;
-import androidx.camera.core.ImageAnalysis;
-import androidx.camera.core.ImageProxy;
-import androidx.camera.core.Preview;
-import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -29,29 +20,17 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
-
-import com.example.myapplication.model.Asset;
+import com.example.myapplication.camera.QrScanner;
 import com.example.myapplication.data.AssetRepository;
 import com.example.myapplication.logic.AssetIdFormat;
 import com.example.myapplication.logic.ScanClassifier;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.zxing.BinaryBitmap;
-import com.google.zxing.DecodeHintType;
-import com.google.zxing.MultiFormatReader;
-import com.google.zxing.PlanarYUVLuminanceSource;
-import com.google.zxing.Result;
-import com.google.zxing.common.HybridBinarizer;
+import com.example.myapplication.model.Asset;
 
-import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class ScanActivity extends AppCompatActivity {
 
@@ -63,7 +42,7 @@ public class ScanActivity extends AppCompatActivity {
     private PreviewView previewView;
     private TextView tvWarning;
     private EditText etId, etName, etDepartment, etLocation;
-    private Button btnPrev, btnNext, btnWrite, btnDone, btnTorch;
+    private Button btnPrev, btnNext, btnWrite, btnDone;
 
     private List<Asset> assets;          // 來自 Repository
     private List<Asset> history;         // 本次盤點過的財產（依時間順序）
@@ -74,10 +53,7 @@ public class ScanActivity extends AppCompatActivity {
     private long lastScanTime  = 0;
     private String lastScannedRaw = "";
 
-    private ExecutorService cameraExecutor;
-    private MultiFormatReader zxingReader;
-    private androidx.camera.core.Camera camera; // 用來控制手電筒
-    private boolean torchOn = false;
+    private QrScanner scanner;           // 相機 + 解碼管線（deep module）
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -108,30 +84,7 @@ public class ScanActivity extends AppCompatActivity {
         assets  = AssetRepository.getInstance().getAssets();
         history = new ArrayList<>();
 
-        cameraExecutor = Executors.newSingleThreadExecutor();
-        zxingReader    = new MultiFormatReader();
-        Map<DecodeHintType, Object> hints = new HashMap<>();
-        hints.put(DecodeHintType.TRY_HARDER, true);
-        zxingReader.setHints(hints);
-
-        // 編輯監聽：使用者改部門或地點時，把「寫入」按鈕從灰變成「更新」
-        /*
-        TextWatcher editWatcher = new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
-            @Override public void afterTextChanged(Editable s) {
-                if (etId.getText().length() == 0) return; // 還沒掃到資料
-                if (!isNewAsset) {
-                    isEdited = true;
-                    btnWrite.setText("更新");
-                    btnWrite.setEnabled(true);
-                    btnWrite.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#FF9500")));
-                }
-            }
-        };
-        etDepartment.addTextChangedListener(editWatcher);
-        etLocation.addTextChangedListener(editWatcher);
-        */
+        scanner = new QrScanner();
 
         btnPrev.setOnClickListener(v -> showHistory(historyIndex - 1));
         btnNext.setOnClickListener(v -> showHistory(historyIndex + 1));
@@ -152,14 +105,12 @@ public class ScanActivity extends AppCompatActivity {
 
         TextView btnTorch = findViewById(R.id.btn_torch);
         btnTorch.setOnClickListener(v -> {
-            if (camera == null) return;
-            if (!camera.getCameraInfo().hasFlashUnit()) {
+            if (!scanner.hasFlashUnit()) {
                 Toast.makeText(this, "此裝置不支援手電筒", Toast.LENGTH_SHORT).show();
                 return;
             }
-            torchOn = !torchOn;
-            camera.getCameraControl().enableTorch(torchOn);
-            btnTorch.setText(torchOn ? "💡" : "🔦");
+            boolean on = scanner.toggleTorch();
+            btnTorch.setText(on ? "💡" : "🔦");
         });
     }
 
@@ -178,71 +129,17 @@ public class ScanActivity extends AppCompatActivity {
     }
 
     private void startCamera() {
-        ListenableFuture<ProcessCameraProvider> future =
-                ProcessCameraProvider.getInstance(this);
-
-        future.addListener(() -> {
-            try {
-                ProcessCameraProvider provider = future.get();
-
-                Preview preview = new Preview.Builder().build();
-                preview.setSurfaceProvider(previewView.getSurfaceProvider());
-
-                ImageAnalysis analysis = new ImageAnalysis.Builder()
-                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                        .build();
-                analysis.setAnalyzer(cameraExecutor, this::analyzeImage);
-
-                CameraSelector selector = CameraSelector.DEFAULT_BACK_CAMERA;
-
-                provider.unbindAll();
-                // 接住回傳的 Camera 物件
-                camera = provider.bindToLifecycle(this, selector, preview, analysis);
-
-            } catch (Exception e) {
-                Log.e(TAG, "啟動相機失敗", e);
-            }
-        }, ContextCompat.getMainExecutor(this));
-    }
-
-    @OptIn(markerClass = ExperimentalGetImage.class)
-    private void analyzeImage(ImageProxy imageProxy) {
-        // 冷卻中
-        if (System.currentTimeMillis() - lastScanTime < COOLDOWN_MS) {
-            imageProxy.close();
-            return;
-        }
-
-        try {
-            ByteBuffer buffer = imageProxy.getPlanes()[0].getBuffer();
-            byte[] bytes = new byte[buffer.remaining()];
-            buffer.get(bytes);
-
-            int width  = imageProxy.getWidth();
-            int height = imageProxy.getHeight();
-
-            PlanarYUVLuminanceSource source = new PlanarYUVLuminanceSource(
-                    bytes, width, height, 0, 0, width, height, false
-            );
-            BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
-
-            try {
-                Result result = zxingReader.decodeWithState(bitmap);
-                String raw = result.getText();
-                runOnUiThread(() -> handleScanResult(raw));
-            } catch (Exception decodeError) {
-                // 沒掃到，正常情況
-            } finally {
-                zxingReader.reset();
-            }
-        } finally {
-            imageProxy.close();
-        }
+        scanner.bind(this, previewView, this::handleScanResult);
     }
 
     private void handleScanResult(String raw) {
-        // 同一張 QR 短時間內去重（避免停在鏡頭前被連續記錄）
         long now = System.currentTimeMillis();
+
+        // 防手震連拍：距上次有效掃描太近 → 忽略（取代原本相機層級的幀冷卻）。
+        if (now - lastScanTime < COOLDOWN_MS) {
+            return;
+        }
+        // 同一張 QR 短時間內去重（避免停在鏡頭前被連續記錄）。
         if (raw.equals(lastScannedRaw) && now - lastScanTime < COOLDOWN_MS * 2) {
             return;
         }
@@ -349,12 +246,6 @@ public class ScanActivity extends AppCompatActivity {
         String location   = etLocation.getText().toString().trim();
 
         if (isNewAsset) {
-            /*
-            if (department.isEmpty() || location.isEmpty()) {
-                Toast.makeText(this, "請填入部門及地點", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            */
             // 新增財產：直接視為已盤點且相符
             Asset newAsset = new Asset(id, name, department, location,
                     Asset.Status.MATCHED, currentTime());
@@ -423,6 +314,6 @@ public class ScanActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (cameraExecutor != null) cameraExecutor.shutdown();
+        if (scanner != null) scanner.close();
     }
 }

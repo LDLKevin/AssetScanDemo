@@ -4,7 +4,6 @@ import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -12,15 +11,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.OptIn;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.camera.core.Camera;
-import androidx.camera.core.CameraSelector;
-import androidx.camera.core.ExperimentalGetImage;
-import androidx.camera.core.ImageAnalysis;
-import androidx.camera.core.ImageProxy;
-import androidx.camera.core.Preview;
-import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -28,24 +19,11 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.example.myapplication.camera.QrScanner;
 import com.example.myapplication.logic.AssetIdFormat;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.zxing.BinaryBitmap;
-import com.google.zxing.DecodeHintType;
-import com.google.zxing.MultiFormatReader;
-import com.google.zxing.PlanarYUVLuminanceSource;
-import com.google.zxing.Result;
-import com.google.zxing.common.HybridBinarizer;
-
-import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class SamplingScanActivity extends AppCompatActivity {
 
-    private static final String TAG = "SamplingScanActivity";
     private static final int REQ_CAMERA = 100;
     private static final long TOAST_COOLDOWN_MS = 1500;
 
@@ -63,10 +41,7 @@ public class SamplingScanActivity extends AppCompatActivity {
     private String targetId;
     private long lastWrongScanToast = 0;
 
-    private Camera camera;
-    private boolean torchOn = false;
-    private ExecutorService cameraExecutor;
-    private MultiFormatReader zxingReader;
+    private QrScanner scanner; // 相機 + 解碼管線（deep module）
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -123,11 +98,7 @@ public class SamplingScanActivity extends AppCompatActivity {
         tvTargetId.setText(targetId);
         tvTargetName.setText(targetName != null ? targetName : "");
 
-        cameraExecutor = Executors.newSingleThreadExecutor();
-        zxingReader    = new MultiFormatReader();
-        Map<DecodeHintType, Object> hints = new HashMap<>();
-        hints.put(DecodeHintType.TRY_HARDER, true);
-        zxingReader.setHints(hints);
+        scanner = new QrScanner();
 
         btnCancel.setOnClickListener(v -> {
             setResult(RESULT_CANCELED);
@@ -160,62 +131,8 @@ public class SamplingScanActivity extends AppCompatActivity {
         }
     }
 
-    // ── 啟動相機 ─────────────────────────────────────────
     private void startCamera() {
-        ListenableFuture<ProcessCameraProvider> future =
-                ProcessCameraProvider.getInstance(this);
-
-        future.addListener(() -> {
-            try {
-                ProcessCameraProvider provider = future.get();
-
-                Preview preview = new Preview.Builder().build();
-                preview.setSurfaceProvider(previewView.getSurfaceProvider());
-
-                ImageAnalysis analysis = new ImageAnalysis.Builder()
-                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                        .build();
-                analysis.setAnalyzer(cameraExecutor, this::analyzeImage);
-
-                provider.unbindAll();
-                camera = provider.bindToLifecycle(
-                        this, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis
-                );
-
-            } catch (Exception e) {
-                Log.e(TAG, "啟動相機失敗", e);
-            }
-        }, ContextCompat.getMainExecutor(this));
-    }
-
-    // ── 解碼 ─────────────────────────────────────────────
-    @OptIn(markerClass = ExperimentalGetImage.class)
-    private void analyzeImage(ImageProxy imageProxy) {
-        try {
-            ByteBuffer buffer = imageProxy.getPlanes()[0].getBuffer();
-            byte[] bytes = new byte[buffer.remaining()];
-            buffer.get(bytes);
-
-            int width  = imageProxy.getWidth();
-            int height = imageProxy.getHeight();
-
-            PlanarYUVLuminanceSource source = new PlanarYUVLuminanceSource(
-                    bytes, width, height, 0, 0, width, height, false
-            );
-            BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
-
-            try {
-                Result result = zxingReader.decodeWithState(bitmap);
-                String raw = result.getText();
-                runOnUiThread(() -> handleScanResult(raw));
-            } catch (Exception decodeError) {
-                // 沒掃到，正常情況
-            } finally {
-                zxingReader.reset();
-            }
-        } finally {
-            imageProxy.close();
-        }
+        scanner.bind(this, previewView, this::handleScanResult);
     }
 
     // ── 掃到結果 ────────────────────────────────────────
@@ -227,7 +144,7 @@ public class SamplingScanActivity extends AppCompatActivity {
             Intent intent = new Intent();
             intent.putExtra(RESULT_RAW, raw);
             setResult(RESULT_OK, intent);
-            if (navigator_vibrate()) { /* 觸發震動已包在方法內 */ }
+            vibrate();
             finish();
         } else if (AssetIdFormat.isValid(scannedId)) {
             // ❌ 是別的（成格式的）資產，才提示；不成格式的雜訊視為誤觸，靜默忽略
@@ -241,28 +158,24 @@ public class SamplingScanActivity extends AppCompatActivity {
         }
     }
 
-    private boolean navigator_vibrate() {
-        // 震動 + 簡單視覺回饋
+    private void vibrate() {
         android.os.Vibrator v = (android.os.Vibrator) getSystemService(VIBRATOR_SERVICE);
         if (v != null) v.vibrate(60);
-        return true;
     }
 
     // ── 手電筒 ───────────────────────────────────────────
     private void toggleTorch() {
-        if (camera == null) return;
-        if (!camera.getCameraInfo().hasFlashUnit()) {
+        if (!scanner.hasFlashUnit()) {
             Toast.makeText(this, "此裝置不支援手電筒", Toast.LENGTH_SHORT).show();
             return;
         }
-        torchOn = !torchOn;
-        camera.getCameraControl().enableTorch(torchOn);
-        btnTorch.setText(torchOn ? "💡" : "🔦");
+        boolean on = scanner.toggleTorch();
+        btnTorch.setText(on ? "💡" : "🔦");
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (cameraExecutor != null) cameraExecutor.shutdown();
+        if (scanner != null) scanner.close();
     }
 }
