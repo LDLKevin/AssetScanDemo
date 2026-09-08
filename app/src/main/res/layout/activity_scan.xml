@@ -71,6 +71,22 @@
             android:background="@drawable/circle_overlay"
             android:clickable="true"
             android:focusable="true" />
+
+        <!-- QR 破損？拍照存證（存到 CSV 同資料夾） -->
+        <TextView
+            android:id="@+id/btn_capture"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|start"
+            android:layout_margin="12dp"
+            android:text="📷 拍照存證"
+            android:textColor="@color/text_on_primary"
+            android:textSize="13sp"
+            android:background="@drawable/bg_hint_overlay"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="8dp"
+            android:clickable="true"
+            android:focusable="true" />
     </FrameLayout>
 
     <!-- ══ 下半部：詳細資料（佔 2/3）══════════════════════ -->

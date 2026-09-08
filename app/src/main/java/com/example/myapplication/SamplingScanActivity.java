@@ -3,13 +3,17 @@ package com.example.myapplication;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.DocumentsContract;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.camera.view.PreviewView;
@@ -29,6 +33,7 @@ import com.example.myapplication.model.Asset;
 import com.example.myapplication.ui.ScanResultCard;
 import com.example.myapplication.ui.ScannerOverlayView;
 import com.example.myapplication.util.PermissionGuide;
+import com.example.myapplication.util.PhotoEvidence;
 
 import java.util.List;
 
@@ -59,6 +64,25 @@ public class SamplingScanActivity extends AppCompatActivity {
     private ScanFeedback feedback; // 聲音＋震動回饋
     private View permissionDenied; // 權限被拒引導畫面
     private boolean cameraStarted = false;
+
+    // 拍照存證（QR 破損）
+    private Uri pendingPhotoUri;
+    private String pendingPhotoName;
+    private final ActivityResultLauncher<Uri> takePhoto =
+            registerForActivityResult(new ActivityResultContracts.TakePicture(), success -> {
+                if (Boolean.TRUE.equals(success)) {
+                    Toast.makeText(this, "已存證：" + pendingPhotoName, Toast.LENGTH_SHORT).show();
+                } else {
+                    if (pendingPhotoUri != null) {
+                        try {
+                            DocumentsContract.deleteDocument(getContentResolver(), pendingPhotoUri);
+                        } catch (Exception ignored) { }
+                    }
+                    Toast.makeText(this, "已取消拍照", Toast.LENGTH_SHORT).show();
+                }
+                pendingPhotoUri = null;
+                pendingPhotoName = null;
+            });
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -124,6 +148,8 @@ public class SamplingScanActivity extends AppCompatActivity {
         permissionDenied.findViewById(R.id.btn_open_settings)
                 .setOnClickListener(v -> PermissionGuide.openAppSettings(this));
 
+        findViewById(R.id.btn_capture).setOnClickListener(v -> capturePhoto());
+
         btnCancel.setOnClickListener(v -> {
             setResult(RESULT_CANCELED);
             finish();
@@ -171,6 +197,19 @@ public class SamplingScanActivity extends AppCompatActivity {
         if (cameraStarted) return;
         cameraStarted = true;
         scanner.bind(this, previewView, this::handleScanResult);
+    }
+
+    // QR 破損：拍整張標籤存到 CSV 同資料夾（檔名帶目前尋找的目標編號）
+    private void capturePhoto() {
+        String name = PhotoEvidence.buildFileName(targetId);
+        Uri uri = PhotoEvidence.createInCsvFolder(this, name);
+        if (uri == null) {
+            Toast.makeText(this, "請先載入 CSV（需資料夾權限）", Toast.LENGTH_LONG).show();
+            return;
+        }
+        pendingPhotoUri = uri;
+        pendingPhotoName = name;
+        takePhoto.launch(uri);
     }
 
     // ── 掃到結果 ────────────────────────────────────────
