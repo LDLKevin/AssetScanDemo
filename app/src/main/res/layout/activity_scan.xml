@@ -1,10 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/scan_root_frame"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_main">
+
+  <LinearLayout
     android:id="@+id/scan_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:background="@color/bg_main">
+    android:orientation="vertical">
 
     <!-- ══ 上半部：相機預覽（佔 1/3）══════════════════════ -->
     <FrameLayout
@@ -200,4 +205,15 @@
         </LinearLayout>
     </ScrollView>
 
-</LinearLayout>
+  </LinearLayout>
+
+    <!-- 掃描結果回饋卡（綠／橘／紅），浮在底部 -->
+    <com.example.myapplication.ui.ScanResultCard
+        android:id="@+id/scan_result_card"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginBottom="24dp" />
+
+</FrameLayout>

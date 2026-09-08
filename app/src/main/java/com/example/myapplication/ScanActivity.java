@@ -24,7 +24,9 @@ import com.example.myapplication.camera.QrScanner;
 import com.example.myapplication.data.AssetRepository;
 import com.example.myapplication.logic.AssetIdFormat;
 import com.example.myapplication.logic.ScanClassifier;
+import com.example.myapplication.logic.ScannedTag;
 import com.example.myapplication.model.Asset;
+import com.example.myapplication.ui.ScanResultCard;
 import com.example.myapplication.ui.ScannerOverlayView;
 
 import java.util.ArrayList;
@@ -39,6 +41,7 @@ public class ScanActivity extends AppCompatActivity {
 
     private PreviewView previewView;
     private ScannerOverlayView scannerOverlay;
+    private ScanResultCard resultCard;
     private TextView tvWarning;
     private EditText etId, etName, etDepartment, etLocation;
     private Button btnPrev, btnNext, btnWrite, btnDone;
@@ -71,6 +74,7 @@ public class ScanActivity extends AppCompatActivity {
 
         previewView    = findViewById(R.id.preview_view);
         scannerOverlay = findViewById(R.id.scanner_overlay);
+        resultCard     = findViewById(R.id.scan_result_card);
         tvWarning      = findViewById(R.id.tv_warning);
         etId         = findViewById(R.id.et_id);
         etName       = findViewById(R.id.et_name);
@@ -159,34 +163,42 @@ public class ScanActivity extends AppCompatActivity {
         switch (r.outcome) {
             case MATCHED:
             case UNMATCHED: {
-                Asset matched = r.asset;
-                boolean isMatched = r.outcome == ScanClassifier.Outcome.MATCHED;
-                // 只改記憶體並標記待落檔，落檔延到 onPause/onStop
-                AssetRepository.getInstance().recordCheck(matched,
-                        isMatched ? Asset.Status.MATCHED : Asset.Status.UNMATCHED);
+                Asset asset = r.asset;
 
-                history.add(matched);
-                historyIndex = history.size() - 1;
-                displayAsset(matched, false);
-
-                // 取景框閃色回饋：相符綠 / 不符紅
-                if (scannerOverlay != null) {
-                    if (isMatched) scannerOverlay.flashSuccess();
-                    else scannerOverlay.flashError();
+                // 重複掃描：已盤點過的財產再掃 → 橘卡提示，不覆蓋原記錄
+                if (asset.status != Asset.Status.UNCHECKED) {
+                    displayAsset(asset, false);
+                    resultCard.showDuplicate("此財產已完成盤點", asset.id + "　" + asset.name);
+                    break;
                 }
 
-                if (isMatched) {
-                    Toast.makeText(this, "✅ " + r.id + " 盤點成功", Toast.LENGTH_SHORT).show();
+                if (r.outcome == ScanClassifier.Outcome.MATCHED) {
+                    // 相符：即時落檔，綠卡自動消散
+                    AssetRepository.getInstance().recordCheck(asset, Asset.Status.MATCHED);
+                    history.add(asset);
+                    historyIndex = history.size() - 1;
+                    displayAsset(asset, false);
+                    if (scannerOverlay != null) scannerOverlay.flashSuccess();
+                    resultCard.showSuccess("✅ 盤點成功", asset.id + "　" + asset.name);
                 } else {
-                    Toast.makeText(this, "⚠️ " + r.id + " 部門或地點不相符", Toast.LENGTH_LONG).show();
+                    // 不相符：先不落檔，紅卡列出差異對比，按「確認寫入不相符」才寫
+                    if (scannerOverlay != null) scannerOverlay.flashError();
+                    ScannedTag scanned = ScannedTag.parse(raw);
+                    resultCard.showUnmatched("⚠️ 部門或地點不相符", scanned, asset, () -> {
+                        AssetRepository.getInstance().recordCheck(asset, Asset.Status.UNMATCHED);
+                        history.add(asset);
+                        historyIndex = history.size() - 1;
+                        displayAsset(asset, false);
+                        updateNavButtons();
+                    });
                 }
                 break;
             }
             case SURPLUS: {
+                // 盤盈（未列入清單）：沿用既有表單流程（顯示警告並啟用「寫入」）
                 Asset newAsset = new Asset(r.id, r.name, r.department, r.location,
                         Asset.Status.UNCHECKED, "");
                 displayAsset(newAsset, true);
-                Toast.makeText(this, "⚠️ 未列入清單", Toast.LENGTH_SHORT).show();
                 break;
             }
             default:
