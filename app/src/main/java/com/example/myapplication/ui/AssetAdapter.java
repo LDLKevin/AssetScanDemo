@@ -18,12 +18,22 @@ import java.util.List;
 
 public class AssetAdapter extends RecyclerView.Adapter<AssetAdapter.ViewHolder> {
 
+    /** 點擊某列財產（抽盤用來以該筆為目標進入掃描；全盤不設即維持唯讀）。 */
+    public interface OnAssetClickListener {
+        void onAssetClick(Asset asset);
+    }
+
     private final Context context;
     private final List<Asset> assets;
+    private OnAssetClickListener clickListener;
 
     public AssetAdapter(Context context, List<Asset> assets) {
         this.context = context;
         this.assets  = assets;
+    }
+
+    public void setOnAssetClickListener(OnAssetClickListener listener) {
+        this.clickListener = listener;
     }
 
     @NonNull
@@ -37,6 +47,11 @@ public class AssetAdapter extends RecyclerView.Adapter<AssetAdapter.ViewHolder> 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         Asset asset = assets.get(position);
+
+        holder.itemView.setOnClickListener(v -> {
+            if (clickListener != null) clickListener.onAssetClick(asset);
+        });
+        holder.itemView.setClickable(clickListener != null);
 
         holder.tvId.setText(asset.id);
         holder.tvName.setText(asset.name);
