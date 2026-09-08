@@ -61,6 +61,7 @@ public class ScanActivity extends AppCompatActivity {
     private boolean isEdited   = false;  // 使用者是否編輯過部門或地點
     private long lastScanTime  = 0;
     private String lastScannedRaw = "";
+    private boolean awaitingConfirm = false;  // 不相符卡等待確認/略過期間，暫停處理後續掃描
 
     private QrScanner scanner;           // 相機 + 解碼管線（deep module）
     private ScanFeedback feedback;       // 聲音＋震動回饋
@@ -73,15 +74,16 @@ public class ScanActivity extends AppCompatActivity {
     private final ActivityResultLauncher<Uri> takePhoto =
             registerForActivityResult(new ActivityResultContracts.TakePicture(), success -> {
                 if (Boolean.TRUE.equals(success)) {
-                    Toast.makeText(this, "已存證：" + pendingPhotoName, Toast.LENGTH_SHORT).show();
+                    String n = pendingPhotoName != null ? pendingPhotoName : "照片";
+                    Toast.makeText(this, "已存證：" + n, Toast.LENGTH_SHORT).show();
                 } else {
-                    // 取消或失敗：刪掉剛建立的空檔
+                    // 取消或失敗（TakePicture 無法區分）：刪掉剛建立的空檔
                     if (pendingPhotoUri != null) {
                         try {
                             DocumentsContract.deleteDocument(getContentResolver(), pendingPhotoUri);
                         } catch (Exception ignored) { }
                     }
-                    Toast.makeText(this, "已取消拍照", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "照片未儲存", Toast.LENGTH_SHORT).show();
                 }
                 pendingPhotoUri = null;
                 pendingPhotoName = null;
@@ -209,6 +211,12 @@ public class ScanActivity extends AppCompatActivity {
     }
 
     private void handleScanResult(String raw) {
+        // 不相符卡等待使用者「確認寫入」或「略過」期間，暫停處理，避免直接掃下一張時
+        // 靜默丟失這筆未確認的不相符（也避免嗶聲／卡片每隔冷卻時間重播）。
+        if (awaitingConfirm) {
+            return;
+        }
+
         long now = System.currentTimeMillis();
 
         // 防手震連拍：距上次有效掃描太近 → 忽略（取代原本相機層級的幀冷卻）。
@@ -254,18 +262,23 @@ public class ScanActivity extends AppCompatActivity {
                     feedback.success();
                     resultCard.showSuccess("✅ 盤點成功", asset.id + "　" + asset.name);
                 } else {
-                    // 不相符：先不落檔，紅卡列出差異對比，按「確認寫入不相符」才寫
+                    // 不相符：先不落檔，紅卡列出差異對比，按「確認寫入不相符」才寫；
+                    // 期間暫停掃描，並提供「略過」讓使用者明確放棄這筆。
                     if (scannerOverlay != null) scannerOverlay.flashError();
                     feedback.unmatched();
+                    awaitingConfirm = true;
                     ScannedTag scanned = ScannedTag.parse(raw);
-                    resultCard.showUnmatched("⚠️ 部門或地點不相符", scanned, asset, () -> {
-                        AssetRepository.getInstance().recordCheck(asset, Asset.Status.UNMATCHED);
-                        history.add(asset);
-                        historyIndex = history.size() - 1;
-                        displayAsset(asset, false);
-                        updateNavButtons();
-                        updateProgressChip();
-                    });
+                    resultCard.showUnmatched("⚠️ 部門或地點不相符", scanned, asset,
+                            () -> {   // 確認寫入
+                                AssetRepository.getInstance().recordCheck(asset, Asset.Status.UNMATCHED);
+                                history.add(asset);
+                                historyIndex = history.size() - 1;
+                                displayAsset(asset, false);
+                                updateNavButtons();
+                                updateProgressChip();
+                                awaitingConfirm = false;
+                            },
+                            () -> awaitingConfirm = false);   // 略過（不寫入）
                 }
                 break;
             }

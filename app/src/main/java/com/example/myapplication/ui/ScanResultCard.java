@@ -39,6 +39,7 @@ public class ScanResultCard extends FrameLayout {
     private final TextView message;
     private final LinearLayout diffContainer;
     private final Button btnConfirm;
+    private final Button btnDismiss;
 
     private final Runnable autoHide = this::hide;
 
@@ -54,6 +55,7 @@ public class ScanResultCard extends FrameLayout {
         message       = findViewById(R.id.result_message);
         diffContainer = findViewById(R.id.result_diff);
         btnConfirm    = findViewById(R.id.result_confirm);
+        btnDismiss    = findViewById(R.id.result_dismiss);
         setVisibility(GONE);
     }
 
@@ -66,6 +68,7 @@ public class ScanResultCard extends FrameLayout {
         setMessage(detail);
         diffContainer.setVisibility(GONE);
         btnConfirm.setVisibility(GONE);
+        btnDismiss.setVisibility(GONE);
         showAutoDismiss();
     }
 
@@ -81,11 +84,16 @@ public class ScanResultCard extends FrameLayout {
         setMessage(detail);
         diffContainer.setVisibility(GONE);
         btnConfirm.setVisibility(GONE);
+        btnDismiss.setVisibility(GONE);
         showAutoDismiss();
     }
 
-    /** 不相符：紅卡，含差異對比，需確認才寫入（不自動消散）。 */
-    public void showUnmatched(String heading, ScannedTag scanned, Asset listed, Runnable onConfirm) {
+    /**
+     * 不相符：紅卡，含差異對比，需確認才寫入（不自動消散）。
+     * 提供「略過（不寫入）」讓使用者明確放棄，避免直接掃下一張時靜默丟失這筆。
+     */
+    public void showUnmatched(String heading, ScannedTag scanned, Asset listed,
+                              Runnable onConfirm, Runnable onDismiss) {
         style(R.color.status_error_bg, R.color.status_error);
         title.setText(heading);
         setMessage(listed.id + "　" + listed.name);
@@ -100,12 +108,19 @@ public class ScanResultCard extends FrameLayout {
             hide();
         });
 
+        btnDismiss.setVisibility(VISIBLE);
+        btnDismiss.setOnClickListener(v -> {
+            if (onDismiss != null) onDismiss.run();
+            hide();
+        });
+
         removeCallbacks(autoHide);       // 不相符需使用者確認，不自動消散
         setVisibility(VISIBLE);
     }
 
     public void hide() {
         removeCallbacks(autoHide);
+        btnDismiss.setVisibility(GONE);
         setVisibility(GONE);
     }
 

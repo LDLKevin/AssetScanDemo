@@ -103,6 +103,16 @@ public class MainActivity extends AppCompatActivity {
         tabMatched.setOnClickListener(v -> selectFilter(Filter.MATCHED, tabMatched));
         tabUnmatched.setOnClickListener(v -> selectFilter(Filter.UNMATCHED, tabUnmatched));
 
+        // 若記憶體已有清單（例如已載入過或從其他頁返回），直接顯示，免得又要重選資料夾
+        List<Asset> existing = AssetRepository.getInstance().getAssets();
+        if (existing != null && !existing.isEmpty()) {
+            assets = existing;
+            adapter = new AssetAdapter(this, filteredAssets);
+            recyclerView.setAdapter(adapter);
+            btnScan.setEnabled(true);
+            selectFilter(Filter.ALL, tabAll);
+            updateProgress();
+        }
     }
 
     @Override

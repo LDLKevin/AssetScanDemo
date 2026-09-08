@@ -71,14 +71,16 @@ public class SamplingScanActivity extends AppCompatActivity {
     private final ActivityResultLauncher<Uri> takePhoto =
             registerForActivityResult(new ActivityResultContracts.TakePicture(), success -> {
                 if (Boolean.TRUE.equals(success)) {
-                    Toast.makeText(this, "已存證：" + pendingPhotoName, Toast.LENGTH_SHORT).show();
+                    String n = pendingPhotoName != null ? pendingPhotoName : "照片";
+                    Toast.makeText(this, "已存證：" + n, Toast.LENGTH_SHORT).show();
                 } else {
+                    // 取消或失敗（TakePicture 無法區分）：刪掉剛建立的空檔
                     if (pendingPhotoUri != null) {
                         try {
                             DocumentsContract.deleteDocument(getContentResolver(), pendingPhotoUri);
                         } catch (Exception ignored) { }
                     }
-                    Toast.makeText(this, "已取消拍照", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "照片未儲存", Toast.LENGTH_SHORT).show();
                 }
                 pendingPhotoUri = null;
                 pendingPhotoName = null;
@@ -151,6 +153,7 @@ public class SamplingScanActivity extends AppCompatActivity {
         findViewById(R.id.btn_capture).setOnClickListener(v -> capturePhoto());
 
         btnCancel.setOnClickListener(v -> {
+            if (finishing) return;   // 命中延遲返回期間，別讓取消覆蓋 RESULT_OK
             setResult(RESULT_CANCELED);
             finish();
         });
@@ -236,7 +239,8 @@ public class SamplingScanActivity extends AppCompatActivity {
                 feedback.unmatched();
                 if (target != null) {
                     resultCard.showUnmatched("⚠️ 部門或地點不相符", tag, target,
-                            () -> returnRaw(raw));
+                            () -> returnRaw(raw),          // 確認寫入不相符 → 回傳落檔
+                            () -> finishing = false);      // 略過 → 恢復掃描
                 } else {
                     // 找不到目標資產（理論上不會發生）：直接回傳，交由主畫面處理
                     returnRaw(raw);

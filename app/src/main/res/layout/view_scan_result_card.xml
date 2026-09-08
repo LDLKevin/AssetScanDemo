@@ -41,4 +41,14 @@
         android:textColor="@color/text_on_primary"
         android:visibility="gone" />
 
+    <Button
+        android:id="@+id/result_dismiss"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:text="略過（不寫入）"
+        android:textColor="@color/text_secondary"
+        android:background="@android:color/transparent"
+        android:visibility="gone" />
+
 </LinearLayout>

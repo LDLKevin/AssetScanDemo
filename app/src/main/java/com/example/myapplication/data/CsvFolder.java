@@ -7,6 +7,7 @@ import androidx.documentfile.provider.DocumentFile;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * 以「資料夾（Tree）」為單位存取 CSV 與其同資料夾檔案。
@@ -26,7 +27,7 @@ public final class CsvFolder {
         if (tree == null) return csvs;
         for (DocumentFile f : tree.listFiles()) {
             String name = f.getName();
-            if (f.isFile() && name != null && name.toLowerCase().endsWith(".csv")) {
+            if (f.isFile() && name != null && name.toLowerCase(Locale.ROOT).endsWith(".csv")) {
                 csvs.add(f);
             }
         }
