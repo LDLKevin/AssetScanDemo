@@ -2,13 +2,17 @@ package com.example.myapplication;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.documentfile.provider.DocumentFile;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.example.myapplication.data.CsvFolder;
 
 import android.content.Intent;
 import android.net.Uri;
@@ -44,20 +48,12 @@ public class MainActivity extends AppCompatActivity {
     private TextView tvEmpty;
     private List<Asset> filteredAssets = new ArrayList<>();
 
-    // filePicker 回調時存起來
-    private final ActivityResultLauncher<String[]> filePicker =
+    // 改選「資料夾」：App 持有整個資料夾的讀寫權限，才能在 CSV 旁建立照片等檔案
+    private final ActivityResultLauncher<Uri> folderPicker =
             registerForActivityResult(
-                    new ActivityResultContracts.OpenDocument(),
-                    uri -> {
-                        if (uri != null) {
-                            // 取得持久性權限，App 重開後還能讀寫同一個檔案
-                            getContentResolver().takePersistableUriPermission(
-                                    uri,
-                                    Intent.FLAG_GRANT_READ_URI_PERMISSION |
-                                            Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                            );
-                            loadCsv(uri);
-                        }
+                    new ActivityResultContracts.OpenDocumentTree(),
+                    treeUri -> {
+                        if (treeUri != null) onFolderPicked(treeUri);
                     }
             );
 
@@ -83,7 +79,7 @@ public class MainActivity extends AppCompatActivity {
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
         findViewById(R.id.btn_load).setOnClickListener(v ->
-                filePicker.launch(new String[]{ "text/*", "application/csv" })
+                folderPicker.launch(null)
         );
 
         btnScan.setOnClickListener(v -> {
@@ -111,6 +107,32 @@ public class MainActivity extends AppCompatActivity {
             refreshList();
             updateProgress();
         }
+    }
+
+    // 選了資料夾：取得持久權限、找出資料夾內的 CSV（多個則讓使用者選）
+    private void onFolderPicked(Uri treeUri) {
+        getContentResolver().takePersistableUriPermission(
+                treeUri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION |
+                        Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        );
+        AssetRepository.getInstance().setTreeUri(treeUri);
+
+        List<DocumentFile> csvs = CsvFolder.findCsvFiles(this, treeUri);
+        if (csvs.isEmpty()) {
+            Toast.makeText(this, "此資料夾內找不到 CSV 檔", Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (csvs.size() == 1) {
+            loadCsv(csvs.get(0).getUri());
+            return;
+        }
+        String[] names = new String[csvs.size()];
+        for (int i = 0; i < csvs.size(); i++) names[i] = csvs.get(i).getName();
+        new AlertDialog.Builder(this)
+                .setTitle("選擇 CSV 檔")
+                .setItems(names, (d, which) -> loadCsv(csvs.get(which).getUri()))
+                .show();
     }
 
     private void loadCsv(Uri uri) {

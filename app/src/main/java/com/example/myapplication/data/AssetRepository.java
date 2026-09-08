@@ -16,7 +16,8 @@ public class AssetRepository {
     private static AssetRepository instance;
 
     private List<Asset> assets;
-    private android.net.Uri csvUri;
+    private android.net.Uri csvUri;   // CSV 文件本身（資料夾內）
+    private android.net.Uri treeUri;  // CSV 所在資料夾，供同資料夾寫檔（如標籤照片）
 
     private boolean dirty   = false;  // 記憶體有未落檔的變更
     private boolean writing = false;  // 寫檔進行中，避免重入
@@ -34,6 +35,9 @@ public class AssetRepository {
 
     public android.net.Uri getCsvUri() { return csvUri; }
     public void setCsvUri(android.net.Uri uri) { this.csvUri = uri; }
+
+    public android.net.Uri getTreeUri() { return treeUri; }
+    public void setTreeUri(android.net.Uri uri) { this.treeUri = uri; }
 
     public boolean isDirty() { return dirty; }
 

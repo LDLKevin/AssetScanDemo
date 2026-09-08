@@ -13,15 +13,18 @@ import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.documentfile.provider.DocumentFile;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.myapplication.data.AssetRepository;
+import com.example.myapplication.data.CsvFolder;
 import com.example.myapplication.data.CsvManager;
 import com.example.myapplication.logic.ScanClassifier;
 import com.example.myapplication.logic.ScannedTag;
@@ -65,20 +68,12 @@ public class SamplingActivity extends AppCompatActivity {
                     }
             );
 
-    // ── 檔案選擇器 ──────────────────────────────────────
-    private final ActivityResultLauncher<String[]> filePicker =
+    // ── 資料夾選擇器 ────────────────────────────────────
+    private final ActivityResultLauncher<Uri> folderPicker =
             registerForActivityResult(
-                    new ActivityResultContracts.OpenDocument(),
-                    uri -> {
-                        if (uri != null) {
-                            getContentResolver().takePersistableUriPermission(
-                                    uri,
-                                    Intent.FLAG_GRANT_READ_URI_PERMISSION |
-                                            Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                            );
-                            AssetRepository.getInstance().setCsvUri(uri);
-                            loadCsv(uri);
-                        }
+                    new ActivityResultContracts.OpenDocumentTree(),
+                    treeUri -> {
+                        if (treeUri != null) onFolderPicked(treeUri);
                     }
             );
 
@@ -107,8 +102,7 @@ public class SamplingActivity extends AppCompatActivity {
         tabUnmatched = findViewById(R.id.tab_unmatched);
         tabIndicator = findViewById(R.id.tab_indicator);
 
-        findViewById(R.id.btn_load).setOnClickListener(v ->
-                filePicker.launch(new String[]{ "*/*" }));
+        findViewById(R.id.btn_load).setOnClickListener(v -> folderPicker.launch(null));
         findViewById(R.id.btn_done).setOnClickListener(v -> finish());
 
         tabAll.setOnClickListener(v -> selectFilter(Filter.ALL, tabAll));
@@ -133,6 +127,37 @@ public class SamplingActivity extends AppCompatActivity {
             refreshList();
             updateProgress();
         }
+    }
+
+    // 選了資料夾：取得持久權限、找出資料夾內的 CSV（多個則讓使用者選）
+    private void onFolderPicked(Uri treeUri) {
+        getContentResolver().takePersistableUriPermission(
+                treeUri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION |
+                        Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        );
+        AssetRepository.getInstance().setTreeUri(treeUri);
+
+        List<DocumentFile> csvs = CsvFolder.findCsvFiles(this, treeUri);
+        if (csvs.isEmpty()) {
+            Toast.makeText(this, "此資料夾內找不到 CSV 檔", Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (csvs.size() == 1) {
+            useCsv(csvs.get(0).getUri());
+            return;
+        }
+        String[] names = new String[csvs.size()];
+        for (int i = 0; i < csvs.size(); i++) names[i] = csvs.get(i).getName();
+        new AlertDialog.Builder(this)
+                .setTitle("選擇 CSV 檔")
+                .setItems(names, (d, which) -> useCsv(csvs.get(which).getUri()))
+                .show();
+    }
+
+    private void useCsv(Uri csvUri) {
+        AssetRepository.getInstance().setCsvUri(csvUri);
+        loadCsv(csvUri);
     }
 
     // ── 載入 CSV ─────────────────────────────────────────
