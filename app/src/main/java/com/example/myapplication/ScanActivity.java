@@ -42,6 +42,7 @@ public class ScanActivity extends AppCompatActivity {
     private PreviewView previewView;
     private ScannerOverlayView scannerOverlay;
     private ScanResultCard resultCard;
+    private TextView tvProgressChip;
     private TextView tvWarning;
     private EditText etId, etName, etDepartment, etLocation;
     private Button btnPrev, btnNext, btnWrite, btnDone;
@@ -75,6 +76,7 @@ public class ScanActivity extends AppCompatActivity {
         previewView    = findViewById(R.id.preview_view);
         scannerOverlay = findViewById(R.id.scanner_overlay);
         resultCard     = findViewById(R.id.scan_result_card);
+        tvProgressChip = findViewById(R.id.tv_progress_chip);
         tvWarning      = findViewById(R.id.tv_warning);
         etId         = findViewById(R.id.et_id);
         etName       = findViewById(R.id.et_name);
@@ -97,6 +99,7 @@ public class ScanActivity extends AppCompatActivity {
 
         clearForm();
         updateNavButtons();
+        updateProgressChip();
 
         // 請求相機權限
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
@@ -190,6 +193,7 @@ public class ScanActivity extends AppCompatActivity {
                         historyIndex = history.size() - 1;
                         displayAsset(asset, false);
                         updateNavButtons();
+                        updateProgressChip();
                     });
                 }
                 break;
@@ -206,6 +210,7 @@ public class ScanActivity extends AppCompatActivity {
         }
 
         updateNavButtons();
+        updateProgressChip();
     }
 
 
@@ -256,6 +261,21 @@ public class ScanActivity extends AppCompatActivity {
         btnNext.setEnabled(historyIndex >= 0 && historyIndex < history.size() - 1);
     }
 
+    // 常駐進度：已盤（相符＋不符）/ 總數
+    private void updateProgressChip() {
+        if (tvProgressChip == null) return;
+        if (assets == null) {
+            tvProgressChip.setText("已盤 0 / 0");
+            return;
+        }
+        int total = assets.size();
+        long checked = 0;
+        for (Asset a : assets) {
+            if (a.status != Asset.Status.UNCHECKED) checked++;
+        }
+        tvProgressChip.setText("已盤 " + checked + " / " + total);
+    }
+
     // 寫入按鈕
     private void onWriteClicked() {
         String id         = etId.getText().toString().trim();
@@ -291,6 +311,7 @@ public class ScanActivity extends AppCompatActivity {
         }
 
         updateNavButtons();
+        updateProgressChip();
     }
 
     // 定點寫檔：只有記憶體有未落檔變更時才真正寫一次（背景執行緒）。
