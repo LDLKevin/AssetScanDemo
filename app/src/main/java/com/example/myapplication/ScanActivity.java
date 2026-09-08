@@ -2,7 +2,6 @@ package com.example.myapplication;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.DocumentsContract;
@@ -190,6 +189,11 @@ public class ScanActivity extends AppCompatActivity {
         scanner.bind(this, previewView, this::handleScanResult);
     }
 
+    /** 由 colors.xml 產生單色 tint，統一按鈕上色、避免硬編碼。 */
+    private android.content.res.ColorStateList tint(int colorRes) {
+        return android.content.res.ColorStateList.valueOf(ContextCompat.getColor(this, colorRes));
+    }
+
     // QR 破損：拍整張標籤存到 CSV 同資料夾（檔名帶目前顯示的編號，無則 UNKNOWN）
     private void capturePhoto() {
         String id = etId.getText().toString().trim();
@@ -295,12 +299,12 @@ public class ScanActivity extends AppCompatActivity {
             tvWarning.setVisibility(View.VISIBLE);
             btnWrite.setText("寫入");
             btnWrite.setEnabled(true);
-            btnWrite.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#34c759")));
+            btnWrite.setBackgroundTintList(tint(R.color.evergreen_primary));
         } else {
             tvWarning.setVisibility(View.GONE);
             btnWrite.setText("寫入");
             btnWrite.setEnabled(false);
-            btnWrite.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#cccccc")));
+            btnWrite.setBackgroundTintList(tint(R.color.btn_disabled));
         }
     }
 
@@ -312,7 +316,7 @@ public class ScanActivity extends AppCompatActivity {
         tvWarning.setVisibility(View.GONE);
         btnWrite.setEnabled(false);
         btnWrite.setText("寫入");
-        btnWrite.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#cccccc")));
+        btnWrite.setBackgroundTintList(tint(R.color.btn_disabled));
     }
 
     // 上一筆 / 下一筆
@@ -373,7 +377,7 @@ public class ScanActivity extends AppCompatActivity {
                 isEdited = false;
                 btnWrite.setText("寫入");
                 btnWrite.setEnabled(false);
-                btnWrite.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#cccccc")));
+                btnWrite.setBackgroundTintList(tint(R.color.btn_disabled));
             }
         }
 
