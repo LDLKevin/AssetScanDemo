@@ -22,6 +22,7 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.example.myapplication.camera.QrScanner;
 import com.example.myapplication.data.AssetRepository;
+import com.example.myapplication.feedback.ScanFeedback;
 import com.example.myapplication.logic.AssetIdFormat;
 import com.example.myapplication.logic.ScanClassifier;
 import com.example.myapplication.logic.ScannedTag;
@@ -57,6 +58,7 @@ public class ScanActivity extends AppCompatActivity {
     private String lastScannedRaw = "";
 
     private QrScanner scanner;           // 相機 + 解碼管線（deep module）
+    private ScanFeedback feedback;       // 聲音＋震動回饋
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -91,6 +93,7 @@ public class ScanActivity extends AppCompatActivity {
         history = new ArrayList<>();
 
         scanner = new QrScanner();
+        feedback = new ScanFeedback(this);
 
         btnPrev.setOnClickListener(v -> showHistory(historyIndex - 1));
         btnNext.setOnClickListener(v -> showHistory(historyIndex + 1));
@@ -182,10 +185,12 @@ public class ScanActivity extends AppCompatActivity {
                     historyIndex = history.size() - 1;
                     displayAsset(asset, false);
                     if (scannerOverlay != null) scannerOverlay.flashSuccess();
+                    feedback.success();
                     resultCard.showSuccess("✅ 盤點成功", asset.id + "　" + asset.name);
                 } else {
                     // 不相符：先不落檔，紅卡列出差異對比，按「確認寫入不相符」才寫
                     if (scannerOverlay != null) scannerOverlay.flashError();
+                    feedback.unmatched();
                     ScannedTag scanned = ScannedTag.parse(raw);
                     resultCard.showUnmatched("⚠️ 部門或地點不相符", scanned, asset, () -> {
                         AssetRepository.getInstance().recordCheck(asset, Asset.Status.UNMATCHED);
@@ -346,5 +351,6 @@ public class ScanActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         if (scanner != null) scanner.close();
+        if (feedback != null) feedback.release();
     }
 }

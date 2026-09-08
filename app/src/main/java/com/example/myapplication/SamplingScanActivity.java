@@ -21,6 +21,7 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.example.myapplication.camera.QrScanner;
 import com.example.myapplication.data.AssetRepository;
+import com.example.myapplication.feedback.ScanFeedback;
 import com.example.myapplication.logic.AssetIdFormat;
 import com.example.myapplication.logic.ScanClassifier;
 import com.example.myapplication.logic.ScannedTag;
@@ -54,6 +55,7 @@ public class SamplingScanActivity extends AppCompatActivity {
     private boolean finishing = false;   // 命中後延遲返回期間，忽略後續掃描
 
     private QrScanner scanner; // 相機 + 解碼管線（deep module）
+    private ScanFeedback feedback; // 聲音＋震動回饋
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -113,6 +115,7 @@ public class SamplingScanActivity extends AppCompatActivity {
         tvTargetName.setText(targetName != null ? targetName : "");
 
         scanner = new QrScanner();
+        feedback = new ScanFeedback(this);
 
         btnCancel.setOnClickListener(v -> {
             setResult(RESULT_CANCELED);
@@ -163,13 +166,14 @@ public class SamplingScanActivity extends AppCompatActivity {
                 // ✅ 相符：綠卡自動消散，短暫停留後回傳（由抽盤主畫面落檔）
                 finishing = true;
                 if (scannerOverlay != null) scannerOverlay.flashSuccess();
-                vibrate();
+                feedback.success();
                 resultCard.showSuccess("✅ 相符", targetId + "　" + safe(targetName));
                 returnRawDelayed(raw, 1200L);
             } else {
                 // ⚠️ 目標不符（部門／地點）：紅卡列差異對比，確認才回傳落檔
                 finishing = true;
                 if (scannerOverlay != null) scannerOverlay.flashError();
+                feedback.unmatched();
                 if (target != null) {
                     resultCard.showUnmatched("⚠️ 部門或地點不相符", tag, target,
                             () -> returnRaw(raw));
@@ -218,11 +222,6 @@ public class SamplingScanActivity extends AppCompatActivity {
         return s == null ? "" : s;
     }
 
-    private void vibrate() {
-        android.os.Vibrator v = (android.os.Vibrator) getSystemService(VIBRATOR_SERVICE);
-        if (v != null) v.vibrate(60);
-    }
-
     // ── 手電筒 ───────────────────────────────────────────
     private void toggleTorch() {
         if (!scanner.hasFlashUnit()) {
@@ -237,5 +236,6 @@ public class SamplingScanActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         if (scanner != null) scanner.close();
+        if (feedback != null) feedback.release();
     }
 }
