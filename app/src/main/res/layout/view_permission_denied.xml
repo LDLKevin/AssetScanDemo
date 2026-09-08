@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 相機權限被拒時的引導畫面（覆蓋整頁）。由掃描頁 include，預設隱藏。 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:background="@color/bg_main"
+    android:padding="32dp"
+    android:clickable="true"
+    android:focusable="true"
+    android:visibility="gone">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="📷"
+        android:textSize="44sp"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="需要相機權限"
+        android:textColor="@color/text_primary"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:fontFamily="sans-serif-medium" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="掃描 QR Code 需要使用相機。請前往設定開啟相機權限後返回本頁。"
+        android:textColor="@color/text_secondary"
+        android:textSize="14sp"
+        android:gravity="center"
+        android:layout_marginTop="8dp" />
+
+    <Button
+        android:id="@+id/btn_open_settings"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:paddingHorizontal="28dp"
+        android:text="前往設定"
+        android:textColor="@color/text_on_primary"
+        android:background="@drawable/btn_primary" />
+
+</LinearLayout>

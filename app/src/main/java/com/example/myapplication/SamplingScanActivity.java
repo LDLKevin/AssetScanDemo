@@ -28,6 +28,7 @@ import com.example.myapplication.logic.ScannedTag;
 import com.example.myapplication.model.Asset;
 import com.example.myapplication.ui.ScanResultCard;
 import com.example.myapplication.ui.ScannerOverlayView;
+import com.example.myapplication.util.PermissionGuide;
 
 import java.util.List;
 
@@ -56,6 +57,8 @@ public class SamplingScanActivity extends AppCompatActivity {
 
     private QrScanner scanner; // 相機 + 解碼管線（deep module）
     private ScanFeedback feedback; // 聲音＋震動回饋
+    private View permissionDenied; // 權限被拒引導畫面
+    private boolean cameraStarted = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -117,6 +120,10 @@ public class SamplingScanActivity extends AppCompatActivity {
         scanner = new QrScanner();
         feedback = new ScanFeedback(this);
 
+        permissionDenied = findViewById(R.id.permission_denied);
+        permissionDenied.findViewById(R.id.btn_open_settings)
+                .setOnClickListener(v -> PermissionGuide.openAppSettings(this));
+
         btnCancel.setOnClickListener(v -> {
             setResult(RESULT_CANCELED);
             finish();
@@ -143,12 +150,26 @@ public class SamplingScanActivity extends AppCompatActivity {
                 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             startCamera();
         } else {
-            Toast.makeText(this, "需要相機權限才能掃描", Toast.LENGTH_LONG).show();
-            finish();
+            // 不直接關頁：顯示引導畫面，提供「前往設定」
+            permissionDenied.setVisibility(View.VISIBLE);
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // 從系統設定授權返回：若已取得權限則收起引導、啟動相機
+        if (!cameraStarted
+                && ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+                == PackageManager.PERMISSION_GRANTED) {
+            permissionDenied.setVisibility(View.GONE);
+            startCamera();
         }
     }
 
     private void startCamera() {
+        if (cameraStarted) return;
+        cameraStarted = true;
         scanner.bind(this, previewView, this::handleScanResult);
     }
 

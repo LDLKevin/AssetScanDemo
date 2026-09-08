@@ -113,4 +113,11 @@
         android:textColor="@color/text_on_primary"
         android:background="@drawable/btn_secondary" />
 
+    <!-- 相機權限被拒的引導畫面（覆蓋整頁，預設隱藏） -->
+    <include
+        android:id="@+id/permission_denied"
+        layout="@layout/view_permission_denied"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
 </FrameLayout>
