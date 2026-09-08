@@ -11,6 +11,12 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
+    <!-- 取景框覆蓋層：暗遮罩＋四角括號＋掃描線＋命中閃色（與全盤共用） -->
+    <com.example.myapplication.ui.ScannerOverlayView
+        android:id="@+id/scanner_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
     <!-- 頂部資訊條：顯示要找的資產 -->
     <LinearLayout
         android:id="@+id/top_bar"
@@ -58,12 +64,13 @@
             android:layout_marginTop="2dp" />
     </LinearLayout>
 
-    <!-- 中間掃描提示 -->
+    <!-- 掃描提示（移到取景框下方，避免與掃描線重疊） -->
     <TextView
         android:id="@+id/tv_hint"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="center"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="96dp"
         android:text="對準 QR Code"
         android:textColor="@color/text_on_primary"
         android:textSize="13sp"

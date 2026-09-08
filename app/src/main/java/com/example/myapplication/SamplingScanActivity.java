@@ -22,6 +22,7 @@ import androidx.core.view.WindowInsetsCompat;
 import com.example.myapplication.camera.QrScanner;
 import com.example.myapplication.logic.AssetIdFormat;
 import com.example.myapplication.logic.ScannedTag;
+import com.example.myapplication.ui.ScannerOverlayView;
 
 public class SamplingScanActivity extends AppCompatActivity {
 
@@ -36,11 +37,13 @@ public class SamplingScanActivity extends AppCompatActivity {
     public static final String RESULT_RAW = "raw"; // 原始 QR Code 字串
 
     private PreviewView previewView;
+    private ScannerOverlayView scannerOverlay;
     private TextView tvTargetId, tvTargetName, tvHint, btnTorch;
     private Button btnCancel;
 
     private String targetId;
     private long lastWrongScanToast = 0;
+    private boolean finishing = false;   // 命中後延遲返回期間，忽略後續掃描
 
     private QrScanner scanner; // 相機 + 解碼管線（deep module）
 
@@ -49,8 +52,9 @@ public class SamplingScanActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_sampling_scan);
 
-        previewView  = findViewById(R.id.preview_view);
-        tvTargetId   = findViewById(R.id.tv_target_id);
+        previewView    = findViewById(R.id.preview_view);
+        scannerOverlay = findViewById(R.id.scanner_overlay);
+        tvTargetId     = findViewById(R.id.tv_target_id);
         tvTargetName = findViewById(R.id.tv_target_name);
         tvHint       = findViewById(R.id.tv_hint);
         btnTorch     = findViewById(R.id.btn_torch);
@@ -138,20 +142,24 @@ public class SamplingScanActivity extends AppCompatActivity {
 
     // ── 掃到結果 ────────────────────────────────────────
     private void handleScanResult(String raw) {
+        if (finishing) return;
         String scannedId = ScannedTag.parse(raw).id;
 
         if (scannedId.equals(targetId)) {
-            // ✅ 正確的資產，回傳結果
+            // ✅ 正確的資產：閃綠回饋，短暫停留後回傳結果
+            finishing = true;
+            if (scannerOverlay != null) scannerOverlay.flashSuccess();
+            vibrate();
             Intent intent = new Intent();
             intent.putExtra(RESULT_RAW, raw);
             setResult(RESULT_OK, intent);
-            vibrate();
-            finish();
+            previewView.postDelayed(this::finish, 350L);
         } else if (AssetIdFormat.isValid(scannedId)) {
-            // ❌ 是別的（成格式的）資產，才提示；不成格式的雜訊視為誤觸，靜默忽略
+            // ❌ 是別的（成格式的）資產：閃紅並提示；不成格式的雜訊視為誤觸，靜默忽略
             long now = System.currentTimeMillis();
             if (now - lastWrongScanToast > TOAST_COOLDOWN_MS) {
                 lastWrongScanToast = now;
+                if (scannerOverlay != null) scannerOverlay.flashError();
                 Toast.makeText(this,
                         "⚠️ 這不是當前要找的資產（" + scannedId + "）",
                         Toast.LENGTH_SHORT).show();
