@@ -21,8 +21,11 @@ import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.google.android.material.snackbar.Snackbar;
 
 import com.example.myapplication.data.CsvManager;
 import com.example.myapplication.model.Asset;
@@ -46,6 +49,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView tabAll, tabUnchecked, tabMatched, tabUnmatched;
     private View tabIndicator;
     private TextView tvEmpty;
+    private ProgressBar progressLoading;
     private List<Asset> filteredAssets = new ArrayList<>();
 
     // 改選「資料夾」：App 持有整個資料夾的讀寫權限，才能在 CSV 旁建立照片等檔案
@@ -92,6 +96,7 @@ public class MainActivity extends AppCompatActivity {
         tabUnmatched  = findViewById(R.id.tab_unmatched);
         tabIndicator  = findViewById(R.id.tab_indicator);
         tvEmpty       = findViewById(R.id.tv_empty);
+        progressLoading = findViewById(R.id.progress_loading);
 
         tabAll.setOnClickListener(v -> selectFilter(Filter.ALL, tabAll));
         tabUnchecked.setOnClickListener(v -> selectFilter(Filter.UNCHECKED, tabUnchecked));
@@ -136,10 +141,16 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadCsv(Uri uri) {
+        progressLoading.setVisibility(View.VISIBLE);
         new Thread(() -> {
             try {
                 List<Asset> result = CsvManager.read(getContentResolver(), uri);
                 runOnUiThread(() -> {
+                    progressLoading.setVisibility(View.GONE);
+                    if (result.isEmpty()) {
+                        showError("CSV 沒有可用資料，請確認格式（需含 財產編號／名稱／部門／地點 欄位）");
+                        return;
+                    }
                     assets  = result;
                     AssetRepository.getInstance().setAssets(assets);
                     AssetRepository.getInstance().setCsvUri(uri);
@@ -153,19 +164,22 @@ public class MainActivity extends AppCompatActivity {
 
                     // 預設選中「全部」
                     selectFilter(Filter.ALL, tabAll);
-                    Toast.makeText(this,
-                            "載入成功：" + assets.size() + " 筆",
-                            Toast.LENGTH_SHORT).show();
+                    Snackbar.make(findViewById(R.id.root_layout),
+                            "已載入 " + assets.size() + " 筆財產",
+                            Snackbar.LENGTH_LONG).show();
                 });
             } catch (Exception e) {
-                runOnUiThread(() ->
-                        Toast.makeText(this,
-                                "讀取失敗：" + e.getMessage(),
-                                Toast.LENGTH_LONG).show()
-                );
                 Log.e(TAG, "讀取失敗", e);
+                runOnUiThread(() -> {
+                    progressLoading.setVisibility(View.GONE);
+                    showError("無法讀取 CSV，請確認檔案未損毀且為 Big5 編碼");
+                });
             }
         }).start();
+    }
+
+    private void showError(String msg) {
+        Snackbar.make(findViewById(R.id.root_layout), msg, Snackbar.LENGTH_LONG).show();
     }
 
     private void updateProgress() {

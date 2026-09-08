@@ -8,8 +8,11 @@ import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.google.android.material.snackbar.Snackbar;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -52,6 +55,7 @@ public class SamplingActivity extends AppCompatActivity {
     private TextView tvProgress, tvEmpty;
     private TextView tabAll, tabUnchecked, tabMatched, tabUnmatched;
     private View tabIndicator;
+    private ProgressBar progressLoading;
     private RecyclerView recyclerView;
 
     // ── 掃描啟動器 ──────────────────────────────────────
@@ -93,6 +97,7 @@ public class SamplingActivity extends AppCompatActivity {
 
         tvProgress   = findViewById(R.id.tv_progress);
         tvEmpty      = findViewById(R.id.tv_empty);
+        progressLoading = findViewById(R.id.progress_loading);
         recyclerView = findViewById(R.id.recycler_view);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
@@ -103,7 +108,7 @@ public class SamplingActivity extends AppCompatActivity {
         tabIndicator = findViewById(R.id.tab_indicator);
 
         findViewById(R.id.btn_load).setOnClickListener(v -> folderPicker.launch(null));
-        findViewById(R.id.btn_done).setOnClickListener(v -> finish());
+        findViewById(R.id.btn_done).setOnClickListener(v -> confirmDone());
 
         tabAll.setOnClickListener(v -> selectFilter(Filter.ALL, tabAll));
         tabUnchecked.setOnClickListener(v -> selectFilter(Filter.UNCHECKED, tabUnchecked));
@@ -162,31 +167,60 @@ public class SamplingActivity extends AppCompatActivity {
 
     // ── 載入 CSV ─────────────────────────────────────────
     private void loadCsv(Uri uri) {
+        progressLoading.setVisibility(View.VISIBLE);
         new Thread(() -> {
             try {
                 List<Asset> result = CsvManager.read(getContentResolver(), uri);
                 runOnUiThread(() -> {
-                    assets = result;
-                    AssetRepository.getInstance().setAssets(assets);
-
-                    if (assets.isEmpty()) {
-                        Toast.makeText(this, "CSV 是空的", Toast.LENGTH_SHORT).show();
+                    progressLoading.setVisibility(View.GONE);
+                    if (result.isEmpty()) {
+                        showError("CSV 沒有可用資料，請確認格式（需含 財產編號／名稱／部門／地點 欄位）");
                         return;
                     }
+                    assets = result;
+                    AssetRepository.getInstance().setAssets(assets);
                     bindAdapter();
                     selectFilter(Filter.ALL, tabAll);
                     updateProgress();
-                    Toast.makeText(this,
-                            "載入成功：" + assets.size() + " 筆",
-                            Toast.LENGTH_SHORT).show();
+                    Snackbar.make(findViewById(R.id.sampling_root),
+                            "已載入 " + assets.size() + " 筆財產",
+                            Snackbar.LENGTH_LONG).show();
                 });
             } catch (Exception e) {
-                runOnUiThread(() ->
-                        Toast.makeText(this, "讀取失敗：" + e.getMessage(),
-                                Toast.LENGTH_LONG).show());
                 Log.e(TAG, "讀取失敗", e);
+                runOnUiThread(() -> {
+                    progressLoading.setVisibility(View.GONE);
+                    showError("無法讀取 CSV，請確認檔案未損毀且為 Big5 編碼");
+                });
             }
         }).start();
+    }
+
+    private void showError(String msg) {
+        Snackbar.make(findViewById(R.id.sampling_root), msg, Snackbar.LENGTH_LONG).show();
+    }
+
+    // ── 完成：顯示摘要供確認後回傳 ───────────────────────
+    private void confirmDone() {
+        if (assets == null || assets.isEmpty()) {
+            finish();
+            return;
+        }
+        int total = assets.size();
+        long matched   = assets.stream().filter(a -> a.status == Asset.Status.MATCHED).count();
+        long unmatched = assets.stream().filter(a -> a.status == Asset.Status.UNMATCHED).count();
+        long unchecked = assets.stream().filter(a -> a.status == Asset.Status.UNCHECKED).count();
+
+        String summary = "總數：" + total + " 筆\n"
+                + "已盤點（相符）：" + matched + " 筆\n"
+                + "不相符：" + unmatched + " 筆\n"
+                + "未盤點：" + unchecked + " 筆";
+        new AlertDialog.Builder(this)
+                .setTitle("完成盤點")
+                .setMessage(summary + (unchecked > 0 ? "\n\n仍有未盤點財產，確定完成？" : ""))
+                .setPositiveButton("確認完成", (d, w) -> finish())
+                .setNegativeButton("繼續盤點", null)
+                .show();
     }
 
     private void bindAdapter() {
