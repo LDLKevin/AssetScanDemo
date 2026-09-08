@@ -71,6 +71,11 @@ public class ScanResultCard extends FrameLayout {
 
     /** 重複掃描：橘卡，自動消散，不覆蓋。 */
     public void showDuplicate(String heading, String detail) {
+        showWarning(heading, detail);
+    }
+
+    /** 一般橘色提示（自動消散），如抽盤「請掃描指定財產」。 */
+    public void showWarning(String heading, String detail) {
         style(R.color.status_warning_bg, R.color.status_warning);
         title.setText(heading);
         setMessage(detail);

@@ -93,6 +93,15 @@
         android:clickable="true"
         android:focusable="true" />
 
+    <!-- 掃描結果回饋卡（綠／橘／紅），浮在取消鍵上方 -->
+    <com.example.myapplication.ui.ScanResultCard
+        android:id="@+id/scan_result_card"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginBottom="96dp" />
+
     <!-- 底部取消按鈕 -->
     <Button
         android:id="@+id/btn_cancel"

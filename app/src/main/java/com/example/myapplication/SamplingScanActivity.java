@@ -20,9 +20,15 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.example.myapplication.camera.QrScanner;
+import com.example.myapplication.data.AssetRepository;
 import com.example.myapplication.logic.AssetIdFormat;
+import com.example.myapplication.logic.ScanClassifier;
 import com.example.myapplication.logic.ScannedTag;
+import com.example.myapplication.model.Asset;
+import com.example.myapplication.ui.ScanResultCard;
 import com.example.myapplication.ui.ScannerOverlayView;
+
+import java.util.List;
 
 public class SamplingScanActivity extends AppCompatActivity {
 
@@ -38,10 +44,12 @@ public class SamplingScanActivity extends AppCompatActivity {
 
     private PreviewView previewView;
     private ScannerOverlayView scannerOverlay;
+    private ScanResultCard resultCard;
     private TextView tvTargetId, tvTargetName, tvHint, btnTorch;
     private Button btnCancel;
 
     private String targetId;
+    private String targetName;
     private long lastWrongScanToast = 0;
     private boolean finishing = false;   // 命中後延遲返回期間，忽略後續掃描
 
@@ -54,6 +62,7 @@ public class SamplingScanActivity extends AppCompatActivity {
 
         previewView    = findViewById(R.id.preview_view);
         scannerOverlay = findViewById(R.id.scanner_overlay);
+        resultCard     = findViewById(R.id.scan_result_card);
         tvTargetId     = findViewById(R.id.tv_target_id);
         tvTargetName = findViewById(R.id.tv_target_name);
         tvHint       = findViewById(R.id.tv_hint);
@@ -93,7 +102,7 @@ public class SamplingScanActivity extends AppCompatActivity {
 
         // 從 Intent 取得目標
         targetId = getIntent().getStringExtra(EXTRA_TARGET_ID);
-        String targetName = getIntent().getStringExtra(EXTRA_TARGET_NAME);
+        targetName = getIntent().getStringExtra(EXTRA_TARGET_NAME);
 
         if (targetId == null || targetId.isEmpty()) {
             Toast.makeText(this, "缺少目標資產", Toast.LENGTH_SHORT).show();
@@ -143,28 +152,70 @@ public class SamplingScanActivity extends AppCompatActivity {
     // ── 掃到結果 ────────────────────────────────────────
     private void handleScanResult(String raw) {
         if (finishing) return;
-        String scannedId = ScannedTag.parse(raw).id;
+        ScannedTag tag = ScannedTag.parse(raw);
+        String scannedId = tag.id;
 
         if (scannedId.equals(targetId)) {
-            // ✅ 正確的資產：閃綠回饋，短暫停留後回傳結果
-            finishing = true;
-            if (scannerOverlay != null) scannerOverlay.flashSuccess();
-            vibrate();
-            Intent intent = new Intent();
-            intent.putExtra(RESULT_RAW, raw);
-            setResult(RESULT_OK, intent);
-            previewView.postDelayed(this::finish, 350L);
+            Asset target = findTarget();
+            boolean matched = target != null && ScanClassifier.matches(target, tag);
+
+            if (matched) {
+                // ✅ 相符：綠卡自動消散，短暫停留後回傳（由抽盤主畫面落檔）
+                finishing = true;
+                if (scannerOverlay != null) scannerOverlay.flashSuccess();
+                vibrate();
+                resultCard.showSuccess("✅ 相符", targetId + "　" + safe(targetName));
+                returnRawDelayed(raw, 1200L);
+            } else {
+                // ⚠️ 目標不符（部門／地點）：紅卡列差異對比，確認才回傳落檔
+                finishing = true;
+                if (scannerOverlay != null) scannerOverlay.flashError();
+                if (target != null) {
+                    resultCard.showUnmatched("⚠️ 部門或地點不相符", tag, target,
+                            () -> returnRaw(raw));
+                } else {
+                    // 找不到目標資產（理論上不會發生）：直接回傳，交由主畫面處理
+                    returnRaw(raw);
+                }
+            }
         } else if (AssetIdFormat.isValid(scannedId)) {
-            // ❌ 是別的（成格式的）資產：閃紅並提示；不成格式的雜訊視為誤觸，靜默忽略
+            // 掃到別的（成格式的）資產：橘卡提示、不寫入、繼續掃；不成格式的雜訊靜默忽略
             long now = System.currentTimeMillis();
             if (now - lastWrongScanToast > TOAST_COOLDOWN_MS) {
                 lastWrongScanToast = now;
                 if (scannerOverlay != null) scannerOverlay.flashError();
-                Toast.makeText(this,
-                        "⚠️ 這不是當前要找的資產（" + scannedId + "）",
-                        Toast.LENGTH_SHORT).show();
+                resultCard.showWarning("請掃描指定財產", "目前尋找：" + targetId);
             }
         }
+    }
+
+    /** 從記憶體清單找出目前目標資產（取其部門／地點以判定相符）。 */
+    private Asset findTarget() {
+        List<Asset> list = AssetRepository.getInstance().getAssets();
+        if (list != null) {
+            for (Asset a : list) {
+                if (a != null && targetId.equals(a.id)) return a;
+            }
+        }
+        return null;
+    }
+
+    private void returnRaw(String raw) {
+        Intent intent = new Intent();
+        intent.putExtra(RESULT_RAW, raw);
+        setResult(RESULT_OK, intent);
+        finish();
+    }
+
+    private void returnRawDelayed(String raw, long delayMs) {
+        Intent intent = new Intent();
+        intent.putExtra(RESULT_RAW, raw);
+        setResult(RESULT_OK, intent);
+        previewView.postDelayed(this::finish, delayMs);
+    }
+
+    private static String safe(String s) {
+        return s == null ? "" : s;
     }
 
     private void vibrate() {
