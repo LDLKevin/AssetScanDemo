@@ -25,6 +25,7 @@ import com.example.myapplication.data.AssetRepository;
 import com.example.myapplication.logic.AssetIdFormat;
 import com.example.myapplication.logic.ScanClassifier;
 import com.example.myapplication.model.Asset;
+import com.example.myapplication.ui.ScannerOverlayView;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,6 +38,7 @@ public class ScanActivity extends AppCompatActivity {
     private static final long COOLDOWN_MS = 900;
 
     private PreviewView previewView;
+    private ScannerOverlayView scannerOverlay;
     private TextView tvWarning;
     private EditText etId, etName, etDepartment, etLocation;
     private Button btnPrev, btnNext, btnWrite, btnDone;
@@ -67,8 +69,9 @@ public class ScanActivity extends AppCompatActivity {
                 }
         );
 
-        previewView  = findViewById(R.id.preview_view);
-        tvWarning    = findViewById(R.id.tv_warning);
+        previewView    = findViewById(R.id.preview_view);
+        scannerOverlay = findViewById(R.id.scanner_overlay);
+        tvWarning      = findViewById(R.id.tv_warning);
         etId         = findViewById(R.id.et_id);
         etName       = findViewById(R.id.et_name);
         etDepartment = findViewById(R.id.et_department);
@@ -165,6 +168,12 @@ public class ScanActivity extends AppCompatActivity {
                 history.add(matched);
                 historyIndex = history.size() - 1;
                 displayAsset(matched, false);
+
+                // 取景框閃色回饋：相符綠 / 不符紅
+                if (scannerOverlay != null) {
+                    if (isMatched) scannerOverlay.flashSuccess();
+                    else scannerOverlay.flashError();
+                }
 
                 if (isMatched) {
                     Toast.makeText(this, "✅ " + r.id + " 盤點成功", Toast.LENGTH_SHORT).show();
