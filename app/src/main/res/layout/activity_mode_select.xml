@@ -1,12 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/mode_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
     android:background="@color/bg_main"
-    android:gravity="center"
-    android:padding="32dp">
+    android:padding="32dp"
+    android:fillViewport="true">
+
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:gravity="center">
 
     <!-- Logo 區（之後可放長榮 Logo 圖檔，先用文字代替）-->
     <TextView
@@ -170,4 +175,6 @@
 
     </LinearLayout>
 
-</LinearLayout>
+  </LinearLayout>
+
+</ScrollView>
