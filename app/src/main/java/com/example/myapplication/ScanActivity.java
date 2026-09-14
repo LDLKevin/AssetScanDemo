@@ -95,24 +95,22 @@ public class ScanActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_scan);
 
-        // 瀏海：進度 Chip 下推、底部操作列上推（相機全螢幕填滿系統列之後）
+        // 系統列（瀏海／導覽列）內距：全部以「絕對值＝基底 dp＋系統列」計算，避免多次
+        // dispatch 疊加。底部操作列以 paddingBottom 讓底色填到螢幕底（含導覽列之後），
+        // 浮動的提示與結果卡則跟著導覽列高度上移，避免三按鈕導覽時被操作列擠壓／重疊。
         ViewCompat.setOnApplyWindowInsetsListener(
                 findViewById(R.id.scan_root),
                 (view, insets) -> {
                     Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+                    float d = getResources().getDisplayMetrics().density;
 
-                    View chip = findViewById(R.id.tv_progress_chip);
-                    ViewGroup.MarginLayoutParams chipParams =
-                            (ViewGroup.MarginLayoutParams) chip.getLayoutParams();
-                    chipParams.topMargin = bars.top
-                            + (int) (12 * getResources().getDisplayMetrics().density);
-                    chip.setLayoutParams(chipParams);
+                    setTopMargin(findViewById(R.id.tv_progress_chip), bars.top + (int) (12 * d));
 
-                    View bottomBar = findViewById(R.id.bottom_bar);
-                    ViewGroup.MarginLayoutParams barParams =
-                            (ViewGroup.MarginLayoutParams) bottomBar.getLayoutParams();
-                    barParams.bottomMargin = bars.bottom;
-                    bottomBar.setLayoutParams(barParams);
+                    View bar = findViewById(R.id.bottom_bar);
+                    bar.setPadding((int) (8 * d), (int) (12 * d), (int) (8 * d), (int) (12 * d) + bars.bottom);
+
+                    setBottomMargin(findViewById(R.id.tv_scan_hint), (int) (112 * d) + bars.bottom);
+                    setBottomMargin(findViewById(R.id.scan_result_card), (int) (104 * d) + bars.bottom);
 
                     return WindowInsetsCompat.CONSUMED;
                 }
@@ -321,6 +319,18 @@ public class ScanActivity extends AppCompatActivity {
 
     private static String safe(String s) {
         return s == null ? "" : s;
+    }
+
+    private static void setTopMargin(View v, int px) {
+        ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) v.getLayoutParams();
+        lp.topMargin = px;
+        v.setLayoutParams(lp);
+    }
+
+    private static void setBottomMargin(View v, int px) {
+        ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) v.getLayoutParams();
+        lp.bottomMargin = px;
+        v.setLayoutParams(lp);
     }
 
     // 定點寫檔：只有記憶體有未落檔變更時才真正寫一次（背景執行緒）。

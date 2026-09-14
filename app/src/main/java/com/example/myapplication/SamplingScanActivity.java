@@ -102,23 +102,22 @@ public class SamplingScanActivity extends AppCompatActivity {
         btnCancel       = findViewById(R.id.btn_cancel);
         awaitingOverlay = findViewById(R.id.awaiting_overlay);
 
-        // 處理瀏海：頂部資訊條下推、底部操作列上推
+        // 系統列（瀏海／導覽列）內距：以「絕對值」計算避免多次 dispatch 疊加。底部操作列
+        // 以 paddingBottom 讓底色填到螢幕底；浮動的提示與結果卡跟導覽列高度上移，
+        // 避免三按鈕導覽時被操作列擠壓／重疊。
         ViewCompat.setOnApplyWindowInsetsListener(
                 findViewById(R.id.scan_root),
                 (view, insets) -> {
                     Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+                    float d = getResources().getDisplayMetrics().density;
 
-                    View topBar = findViewById(R.id.top_bar);
-                    ViewGroup.MarginLayoutParams topParams =
-                            (ViewGroup.MarginLayoutParams) topBar.getLayoutParams();
-                    topParams.topMargin = bars.top;
-                    topBar.setLayoutParams(topParams);
+                    setTopMargin(findViewById(R.id.top_bar), bars.top);
 
-                    View bottomBar = findViewById(R.id.bottom_bar);
-                    ViewGroup.MarginLayoutParams barParams =
-                            (ViewGroup.MarginLayoutParams) bottomBar.getLayoutParams();
-                    barParams.bottomMargin = bars.bottom;
-                    bottomBar.setLayoutParams(barParams);
+                    View bar = findViewById(R.id.bottom_bar);
+                    bar.setPadding((int) (8 * d), (int) (12 * d), (int) (8 * d), (int) (12 * d) + bars.bottom);
+
+                    setBottomMargin(findViewById(R.id.tv_hint), (int) (112 * d) + bars.bottom);
+                    setBottomMargin(findViewById(R.id.scan_result_card), (int) (104 * d) + bars.bottom);
 
                     return WindowInsetsCompat.CONSUMED;
                 }
@@ -295,6 +294,18 @@ public class SamplingScanActivity extends AppCompatActivity {
 
     private static String safe(String s) {
         return s == null ? "" : s;
+    }
+
+    private static void setTopMargin(View v, int px) {
+        ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) v.getLayoutParams();
+        lp.topMargin = px;
+        v.setLayoutParams(lp);
+    }
+
+    private static void setBottomMargin(View v, int px) {
+        ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) v.getLayoutParams();
+        lp.bottomMargin = px;
+        v.setLayoutParams(lp);
     }
 
     // ── 手電筒 ───────────────────────────────────────────
