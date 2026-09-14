@@ -2,10 +2,12 @@ package com.example.myapplication.ui;
 
 import android.content.Context;
 import android.content.res.ColorStateList;
+import android.provider.Settings;
 import android.util.AttributeSet;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
@@ -33,6 +35,7 @@ import com.example.myapplication.model.Asset;
 public class ScanResultCard extends FrameLayout {
 
     private static final long AUTO_DISMISS_MS = 1500L;
+    private static final long ENTER_MS = 190L;
 
     private final LinearLayout cardBody;
     private final TextView title;
@@ -115,11 +118,14 @@ public class ScanResultCard extends FrameLayout {
         });
 
         removeCallbacks(autoHide);       // 不相符需使用者確認，不自動消散
-        setVisibility(VISIBLE);
+        reveal();
     }
 
     public void hide() {
+        animate().cancel();
         removeCallbacks(autoHide);
+        setAlpha(1f);
+        setTranslationY(0f);
         btnDismiss.setVisibility(GONE);
         setVisibility(GONE);
     }
@@ -132,8 +138,31 @@ public class ScanResultCard extends FrameLayout {
 
     private void showAutoDismiss() {
         removeCallbacks(autoHide);
-        setVisibility(VISIBLE);
+        reveal();
         postDelayed(autoHide, AUTO_DISMISS_MS);
+    }
+
+    /** 由下方滑入＋淡入；系統關閉動畫時直接顯示。 */
+    private void reveal() {
+        setVisibility(VISIBLE);
+        animate().cancel();
+        if (animationsEnabled()) {
+            setAlpha(0f);
+            setTranslationY(16f * getResources().getDisplayMetrics().density);
+            animate().alpha(1f).translationY(0f)
+                    .setDuration(ENTER_MS)
+                    .setInterpolator(new DecelerateInterpolator())
+                    .start();
+        } else {
+            setAlpha(1f);
+            setTranslationY(0f);
+        }
+    }
+
+    private boolean animationsEnabled() {
+        float scale = Settings.Global.getFloat(getContext().getContentResolver(),
+                Settings.Global.ANIMATOR_DURATION_SCALE, 1f);
+        return scale != 0f;
     }
 
     private void setMessage(String detail) {
@@ -187,6 +216,7 @@ public class ScanResultCard extends FrameLayout {
 
     @Override
     protected void onDetachedFromWindow() {
+        animate().cancel();
         removeCallbacks(autoHide);
         super.onDetachedFromWindow();
     }
