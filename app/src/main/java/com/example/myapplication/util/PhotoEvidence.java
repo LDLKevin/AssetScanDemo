@@ -32,7 +32,7 @@ public final class PhotoEvidence {
      * 尚未載入資料夾（無 treeUri）時回傳 null。檔名請以 {@link #buildFileName(String)} 產生。
      */
     public static Uri createInCsvFolder(Context context, String fileName) {
-        Uri tree = AssetRepository.getInstance().getTreeUri();
+        Uri tree = AssetRepository.getTreeUri();
         if (tree == null) return null;
         return CsvFolder.createFile(context, tree, "image/jpeg", fileName);
     }

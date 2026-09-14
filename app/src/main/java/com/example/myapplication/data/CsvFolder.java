@@ -22,13 +22,27 @@ public final class CsvFolder {
 
     /** 列出資料夾內所有 .csv 檔（不遞迴）。 */
     public static List<DocumentFile> findCsvFiles(Context context, Uri treeUri) {
+        return findCsvFiles(context, treeUri, null);
+    }
+
+    /**
+     * 列出資料夾內符合檔名前綴的 .csv 檔（不遞迴，前綴不分大小寫）。
+     *
+     * <p>全盤與抽盤約定各自的 CSV 檔名前綴（全盤 {@code ALL}、抽盤 {@code RAN}），
+     * 藉此讓各模式只看到自己的清單。{@code namePrefix} 為 null／空字串時不過濾前綴。
+     */
+    public static List<DocumentFile> findCsvFiles(Context context, Uri treeUri, String namePrefix) {
         List<DocumentFile> csvs = new ArrayList<>();
         DocumentFile tree = DocumentFile.fromTreeUri(context, treeUri);
         if (tree == null) return csvs;
+        String prefix = namePrefix == null ? "" : namePrefix.toLowerCase(Locale.ROOT);
         for (DocumentFile f : tree.listFiles()) {
             String name = f.getName();
-            if (f.isFile() && name != null && name.toLowerCase(Locale.ROOT).endsWith(".csv")) {
-                csvs.add(f);
+            if (f.isFile() && name != null) {
+                String lower = name.toLowerCase(Locale.ROOT);
+                if (lower.endsWith(".csv") && lower.startsWith(prefix)) {
+                    csvs.add(f);
+                }
             }
         }
         return csvs;

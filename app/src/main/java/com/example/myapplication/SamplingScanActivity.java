@@ -274,7 +274,7 @@ public class SamplingScanActivity extends AppCompatActivity {
 
     /** 從記憶體清單找出目前目標資產（取其部門／地點以判定相符）。 */
     private Asset findTarget() {
-        List<Asset> list = AssetRepository.getInstance().getAssets();
+        List<Asset> list = AssetRepository.sampling().getAssets();
         if (list != null) {
             for (Asset a : list) {
                 if (a != null && targetId.equals(a.id)) return a;

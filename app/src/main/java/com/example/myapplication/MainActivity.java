@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.myapplication.data.CsvFolder;
+import com.example.myapplication.data.FolderAccess;
 
 import android.content.Intent;
 import android.net.Uri;
@@ -37,6 +38,8 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "MainActivity";
+    // 全盤 CSV 檔名約定前綴（與抽盤 RAN 區分，兩模式各自獨立作業）
+    private static final String CSV_PREFIX = "ALL";
 
     private List<Asset> assets;
     private AssetAdapter adapter;
@@ -87,7 +90,7 @@ public class MainActivity extends AppCompatActivity {
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
         findViewById(R.id.btn_back).setOnClickListener(v -> finish());
-        findViewById(R.id.btn_load).setOnClickListener(v -> folderPicker.launch(null));
+        findViewById(R.id.btn_load).setOnClickListener(v -> onLoadClicked());
 
         btnScan.setOnClickListener(v -> startActivity(new Intent(this, ScanActivity.class)));
         setScanEnabled(false);
@@ -105,14 +108,20 @@ public class MainActivity extends AppCompatActivity {
         tabMatched.setOnClickListener(v -> selectFilter(Filter.MATCHED, tabMatched));
         tabUnmatched.setOnClickListener(v -> selectFilter(Filter.UNMATCHED, tabUnmatched));
 
-        // 若記憶體已有清單（例如已載入過或從其他頁返回），直接顯示，免得又要重選資料夾
-        List<Asset> existing = AssetRepository.getInstance().getAssets();
+        // 還原上次記住的資料夾（Plan A）：有的話載入時就不必再選資料夾／再授權
+        if (AssetRepository.getTreeUri() == null) {
+            Uri saved = FolderAccess.restore(this);
+            if (saved != null) AssetRepository.setTreeUri(saved);
+        }
+
+        // 若記憶體已有全盤清單（例如已載入過或從其他頁返回），直接顯示
+        List<Asset> existing = AssetRepository.full().getAssets();
         if (existing != null && !existing.isEmpty()) {
             assets = existing;
             adapter = new AssetAdapter(this, filteredAssets);
             recyclerView.setAdapter(adapter);
             setScanEnabled(true);
-            setFilename(AssetRepository.getInstance().getCsvName());
+            setFilename(AssetRepository.full().getCsvName());
             selectFilter(Filter.ALL, tabAll);
             updateProgress();
         }
@@ -127,18 +136,34 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    // 選了資料夾：取得持久權限、找出資料夾內的 CSV（多個則讓使用者選）
+    // 按「載入」：已授權過資料夾就直接列 CSV（不再跳權限）；第一次才選資料夾
+    private void onLoadClicked() {
+        Uri tree = AssetRepository.getTreeUri();
+        if (tree != null) {
+            listAndChoose(tree);
+        } else {
+            folderPicker.launch(null);
+        }
+    }
+
+    // 第一次選資料夾：取得持久權限、記住資料夾，之後就不再詢問
     private void onFolderPicked(Uri treeUri) {
         getContentResolver().takePersistableUriPermission(
                 treeUri,
                 Intent.FLAG_GRANT_READ_URI_PERMISSION |
                         Intent.FLAG_GRANT_WRITE_URI_PERMISSION
         );
-        AssetRepository.getInstance().setTreeUri(treeUri);
+        AssetRepository.setTreeUri(treeUri);
+        FolderAccess.remember(this, treeUri);
+        listAndChoose(treeUri);
+    }
 
-        List<DocumentFile> csvs = CsvFolder.findCsvFiles(this, treeUri);
+    // 列出資料夾內的全盤 CSV（僅 ALL 開頭），多個則讓使用者選
+    private void listAndChoose(Uri treeUri) {
+        List<DocumentFile> csvs = CsvFolder.findCsvFiles(this, treeUri, CSV_PREFIX);
         if (csvs.isEmpty()) {
-            Toast.makeText(this, "此資料夾內找不到 CSV 檔", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "此資料夾內找不到全盤（" + CSV_PREFIX + " 開頭）CSV 檔",
+                    Toast.LENGTH_LONG).show();
             return;
         }
         if (csvs.size() == 1) {
@@ -148,14 +173,14 @@ public class MainActivity extends AppCompatActivity {
         String[] names = new String[csvs.size()];
         for (int i = 0; i < csvs.size(); i++) names[i] = csvs.get(i).getName();
         new AlertDialog.Builder(this)
-                .setTitle("選擇 CSV 檔")
+                .setTitle("選擇全盤 CSV")
                 .setItems(names, (d, which) -> chooseCsv(csvs.get(which)))
                 .show();
     }
 
     // 選定某個 CSV：記住檔名（header 顯示）後進入載入流程
     private void chooseCsv(DocumentFile f) {
-        AssetRepository.getInstance().setCsvName(f.getName());
+        AssetRepository.full().setCsvName(f.getName());
         confirmThenLoad(f.getUri());
     }
 
@@ -178,7 +203,7 @@ public class MainActivity extends AppCompatActivity {
         new AlertDialog.Builder(this)
                 .setTitle("載入新清單")
                 .setMessage("目前已有進行中的盤點（已盤 " + checked + " / " + total
-                        + " 筆）。載入新清單會取代目前資料，未匯出的進度將不保留。確定載入？")
+                        + " 筆）。載入新清單會取代目前資料，確定載入？")
                 .setPositiveButton("載入新清單", (d, w) -> loadCsv(uri))
                 .setNegativeButton("繼續原作業", null)
                 .show();
@@ -196,8 +221,8 @@ public class MainActivity extends AppCompatActivity {
                         return;
                     }
                     assets  = result;
-                    AssetRepository.getInstance().setAssets(assets);
-                    AssetRepository.getInstance().setCsvUri(uri);
+                    AssetRepository.full().setAssets(assets);
+                    AssetRepository.full().setCsvUri(uri);
                     // Adapter 綁定 filteredAssets
                     adapter = new AssetAdapter(this, filteredAssets);
                     recyclerView.setAdapter(adapter);
@@ -205,7 +230,7 @@ public class MainActivity extends AppCompatActivity {
                     refreshList();      // 根據當前篩選刷新
                     updateProgress();
                     setScanEnabled(true);
-                    setFilename(AssetRepository.getInstance().getCsvName());
+                    setFilename(AssetRepository.full().getCsvName());
 
                     // 預設選中「全部」
                     selectFilter(Filter.ALL, tabAll);

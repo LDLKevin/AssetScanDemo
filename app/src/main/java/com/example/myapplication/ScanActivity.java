@@ -131,7 +131,7 @@ public class ScanActivity extends AppCompatActivity {
         btnCancel       = findViewById(R.id.btn_cancel);
         awaitingOverlay = findViewById(R.id.awaiting_overlay);
 
-        assets  = AssetRepository.getInstance().getAssets();
+        assets  = AssetRepository.full().getAssets();
 
         scanner = new QrScanner();
         feedback = new ScanFeedback(this);
@@ -217,7 +217,7 @@ public class ScanActivity extends AppCompatActivity {
 
                 if (r.outcome == ScanClassifier.Outcome.MATCHED) {
                     // 相符：即時落檔，綠卡自動消散
-                    AssetRepository.getInstance().recordCheck(asset, Asset.Status.MATCHED);
+                    AssetRepository.full().recordCheck(asset, Asset.Status.MATCHED);
                     if (scannerOverlay != null) scannerOverlay.flashSuccess();
                     feedback.success();
                     resultCard.showSuccess("✅ 盤點成功", asset.id + "　" + asset.name);
@@ -230,7 +230,7 @@ public class ScanActivity extends AppCompatActivity {
                     ScannedTag scanned = ScannedTag.parse(raw);
                     resultCard.showUnmatched("⚠️ 部門或地點不相符", scanned, asset,
                             () -> {   // 確認寫入不相符
-                                AssetRepository.getInstance().recordCheck(asset, Asset.Status.UNMATCHED);
+                                AssetRepository.full().recordCheck(asset, Asset.Status.UNMATCHED);
                                 setAwaiting(false);
                                 awaitingConfirm = false;
                                 updateProgressChip();
@@ -255,7 +255,7 @@ public class ScanActivity extends AppCompatActivity {
                         () -> {   // 確認新增
                             Asset newAsset = new Asset(r.id, r.name, r.department, r.location,
                                     Asset.Status.UNCHECKED, "");
-                            AssetRepository.getInstance().addAsMatched(newAsset);
+                            AssetRepository.full().addAsMatched(newAsset);
                             setAwaiting(false);
                             awaitingConfirm = false;
                             updateProgressChip();
@@ -352,7 +352,7 @@ public class ScanActivity extends AppCompatActivity {
     private void flushCsvAsync() {
         new Thread(() -> {
             try {
-                AssetRepository.getInstance().flush(getContentResolver());
+                AssetRepository.full().flush(getContentResolver());
             } catch (Exception e) {
                 runOnUiThread(() ->
                         Toast.makeText(this,

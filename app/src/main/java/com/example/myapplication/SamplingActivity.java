@@ -28,6 +28,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.myapplication.data.AssetRepository;
 import com.example.myapplication.data.CsvFolder;
 import com.example.myapplication.data.CsvManager;
+import com.example.myapplication.data.FolderAccess;
 import com.example.myapplication.logic.ScanClassifier;
 import com.example.myapplication.logic.ScannedTag;
 import com.example.myapplication.model.Asset;
@@ -43,6 +44,8 @@ import java.util.List;
 public class SamplingActivity extends AppCompatActivity {
 
     private static final String TAG = "SamplingActivity";
+    // 抽盤 CSV 檔名約定前綴（與全盤 ALL 區分，兩模式各自獨立作業）
+    private static final String CSV_PREFIX = "RAN";
 
     private List<Asset> assets;
     private final List<Asset> filteredAssets = new ArrayList<>();
@@ -112,19 +115,25 @@ public class SamplingActivity extends AppCompatActivity {
         tabIndicator = findViewById(R.id.tab_indicator);
 
         findViewById(R.id.btn_back).setOnClickListener(v -> finish());
-        findViewById(R.id.btn_load).setOnClickListener(v -> folderPicker.launch(null));
+        findViewById(R.id.btn_load).setOnClickListener(v -> onLoadClicked());
 
         tabAll.setOnClickListener(v -> selectFilter(Filter.ALL, tabAll));
         tabUnchecked.setOnClickListener(v -> selectFilter(Filter.UNCHECKED, tabUnchecked));
         tabMatched.setOnClickListener(v -> selectFilter(Filter.MATCHED, tabMatched));
         tabUnmatched.setOnClickListener(v -> selectFilter(Filter.UNMATCHED, tabUnmatched));
 
-        // 若記憶體已有清單（例如從其他頁返回），直接顯示
-        List<Asset> existing = AssetRepository.getInstance().getAssets();
+        // 還原上次記住的資料夾（Plan A）：有的話載入時就不必再選資料夾／再授權
+        if (AssetRepository.getTreeUri() == null) {
+            Uri saved = FolderAccess.restore(this);
+            if (saved != null) AssetRepository.setTreeUri(saved);
+        }
+
+        // 若記憶體已有抽盤清單（例如從其他頁返回），直接顯示
+        List<Asset> existing = AssetRepository.sampling().getAssets();
         if (existing != null && !existing.isEmpty()) {
             assets = existing;
             bindAdapter();
-            setFilename(AssetRepository.getInstance().getCsvName());
+            setFilename(AssetRepository.sampling().getCsvName());
             selectFilter(Filter.ALL, tabAll);
             updateProgress();
         }
@@ -139,18 +148,34 @@ public class SamplingActivity extends AppCompatActivity {
         }
     }
 
-    // 選了資料夾：取得持久權限、找出資料夾內的 CSV（多個則讓使用者選）
+    // 按「載入」：已授權過資料夾就直接列 CSV（不再跳權限）；第一次才選資料夾
+    private void onLoadClicked() {
+        Uri tree = AssetRepository.getTreeUri();
+        if (tree != null) {
+            listAndChoose(tree);
+        } else {
+            folderPicker.launch(null);
+        }
+    }
+
+    // 第一次選資料夾：取得持久權限、記住資料夾，之後就不再詢問
     private void onFolderPicked(Uri treeUri) {
         getContentResolver().takePersistableUriPermission(
                 treeUri,
                 Intent.FLAG_GRANT_READ_URI_PERMISSION |
                         Intent.FLAG_GRANT_WRITE_URI_PERMISSION
         );
-        AssetRepository.getInstance().setTreeUri(treeUri);
+        AssetRepository.setTreeUri(treeUri);
+        FolderAccess.remember(this, treeUri);
+        listAndChoose(treeUri);
+    }
 
-        List<DocumentFile> csvs = CsvFolder.findCsvFiles(this, treeUri);
+    // 列出資料夾內的抽盤 CSV（僅 RAN 開頭），多個則讓使用者選
+    private void listAndChoose(Uri treeUri) {
+        List<DocumentFile> csvs = CsvFolder.findCsvFiles(this, treeUri, CSV_PREFIX);
         if (csvs.isEmpty()) {
-            Toast.makeText(this, "此資料夾內找不到 CSV 檔", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "此資料夾內找不到抽盤（" + CSV_PREFIX + " 開頭）CSV 檔",
+                    Toast.LENGTH_LONG).show();
             return;
         }
         if (csvs.size() == 1) {
@@ -160,14 +185,14 @@ public class SamplingActivity extends AppCompatActivity {
         String[] names = new String[csvs.size()];
         for (int i = 0; i < csvs.size(); i++) names[i] = csvs.get(i).getName();
         new AlertDialog.Builder(this)
-                .setTitle("選擇 CSV 檔")
+                .setTitle("選擇抽盤 CSV")
                 .setItems(names, (d, which) -> chooseCsv(csvs.get(which)))
                 .show();
     }
 
     // 選定某個 CSV：記住檔名（header 顯示）後進入載入流程
     private void chooseCsv(DocumentFile f) {
-        AssetRepository.getInstance().setCsvName(f.getName());
+        AssetRepository.sampling().setCsvName(f.getName());
         confirmThenUse(f.getUri());
     }
 
@@ -190,14 +215,14 @@ public class SamplingActivity extends AppCompatActivity {
         new AlertDialog.Builder(this)
                 .setTitle("載入新清單")
                 .setMessage("目前已有進行中的盤點（已盤 " + checked + " / " + total
-                        + " 筆）。載入新清單會取代目前資料，未匯出的進度將不保留。確定載入？")
+                        + " 筆）。載入新清單會取代目前資料，確定載入？")
                 .setPositiveButton("載入新清單", (d, w) -> useCsv(csvUri))
                 .setNegativeButton("繼續原作業", null)
                 .show();
     }
 
     private void useCsv(Uri csvUri) {
-        AssetRepository.getInstance().setCsvUri(csvUri);
+        AssetRepository.sampling().setCsvUri(csvUri);
         loadCsv(csvUri);
     }
 
@@ -214,9 +239,9 @@ public class SamplingActivity extends AppCompatActivity {
                         return;
                     }
                     assets = result;
-                    AssetRepository.getInstance().setAssets(assets);
+                    AssetRepository.sampling().setAssets(assets);
                     bindAdapter();
-                    setFilename(AssetRepository.getInstance().getCsvName());
+                    setFilename(AssetRepository.sampling().getCsvName());
                     selectFilter(Filter.ALL, tabAll);
                     updateProgress();
                     Snackbar.make(findViewById(R.id.sampling_root),
@@ -263,7 +288,7 @@ public class SamplingActivity extends AppCompatActivity {
         if (target == null) return;
 
         boolean isMatched = ScanClassifier.matches(target, tag);
-        AssetRepository.getInstance().recordCheck(target,
+        AssetRepository.sampling().recordCheck(target,
                 isMatched ? Asset.Status.MATCHED : Asset.Status.UNMATCHED);
 
         refreshList();
@@ -357,7 +382,7 @@ public class SamplingActivity extends AppCompatActivity {
     private void flushCsvAsync() {
         new Thread(() -> {
             try {
-                AssetRepository.getInstance().flush(getContentResolver());
+                AssetRepository.sampling().flush(getContentResolver());
             } catch (Exception e) {
                 runOnUiThread(() ->
                         Toast.makeText(this, "CSV 寫入失敗：" + e.getMessage(),

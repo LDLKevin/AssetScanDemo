@@ -13,22 +13,33 @@ import java.util.Locale;
 // 掃描／寫入當下只改記憶體並 markDirty()，實際寫檔延到頁面 onPause()/onStop() 時 flush()，
 // 避免「每掃一次就整份重寫」的磁碟負擔與寫壞既有檔案的風險。
 public class AssetRepository {
-    private static AssetRepository instance;
+    // 全盤／抽盤各自一份資料集（各自的清單、CSV、進度），彼此獨立。
+    private static AssetRepository fullInstance;
+    private static AssetRepository samplingInstance;
+
+    // 資料夾（含持久權限）兩模式共用同一個，故設為全域。
+    private static android.net.Uri treeUri;
 
     private List<Asset> assets;
     private android.net.Uri csvUri;   // CSV 文件本身（資料夾內）
-    private android.net.Uri treeUri;  // CSV 所在資料夾，供同資料夾寫檔（如標籤照片）
     private String csvName;           // CSV 顯示檔名（header 顯示用）
 
     private boolean dirty   = false;  // 記憶體有未落檔的變更
     private boolean writing = false;  // 寫檔進行中，避免重入
 
-    public static AssetRepository getInstance() {
-        if (instance == null) instance = new AssetRepository();
-        return instance;
+    /** 全盤資料集（單例）。 */
+    public static AssetRepository full() {
+        if (fullInstance == null) fullInstance = new AssetRepository();
+        return fullInstance;
     }
 
-    /** 供測試建立獨立實例；App 走 {@link #getInstance()}。 */
+    /** 抽盤資料集（單例）。 */
+    public static AssetRepository sampling() {
+        if (samplingInstance == null) samplingInstance = new AssetRepository();
+        return samplingInstance;
+    }
+
+    /** 供測試建立獨立實例；App 走 {@link #full()} / {@link #sampling()}。 */
     public AssetRepository() {}
 
     public List<Asset> getAssets() { return assets; }
@@ -37,8 +48,9 @@ public class AssetRepository {
     public android.net.Uri getCsvUri() { return csvUri; }
     public void setCsvUri(android.net.Uri uri) { this.csvUri = uri; }
 
-    public android.net.Uri getTreeUri() { return treeUri; }
-    public void setTreeUri(android.net.Uri uri) { this.treeUri = uri; }
+    // 資料夾為全域共用（兩模式從同一資料夾讀 ALL*/RAN* 的 CSV）
+    public static android.net.Uri getTreeUri() { return treeUri; }
+    public static void setTreeUri(android.net.Uri uri) { treeUri = uri; }
 
     public String getCsvName() { return csvName; }
     public void setCsvName(String name) { this.csvName = name; }
