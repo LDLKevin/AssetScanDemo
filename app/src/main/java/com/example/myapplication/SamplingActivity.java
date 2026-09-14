@@ -250,12 +250,26 @@ public class SamplingActivity extends AppCompatActivity {
         tabMatched.setTextColor(tab == tabMatched ? active : inactive);
         tabUnmatched.setTextColor(tab == tabUnmatched ? active : inactive);
 
+        // 選中態填色（品牌綠 soft），其餘透明
+        styleTabFill(tabAll, tab == tabAll);
+        styleTabFill(tabUnchecked, tab == tabUnchecked);
+        styleTabFill(tabMatched, tab == tabMatched);
+        styleTabFill(tabUnmatched, tab == tabUnmatched);
+
         tab.post(() -> {
             ViewGroup.LayoutParams lp = tabIndicator.getLayoutParams();
             lp.width = tab.getWidth();
             tabIndicator.setLayoutParams(lp);
             tabIndicator.setX(tab.getX());
         });
+    }
+
+    private void styleTabFill(TextView tab, boolean active) {
+        if (active) {
+            tab.setBackgroundResource(R.drawable.bg_tab_active);
+        } else {
+            tab.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        }
     }
 
     private void refreshList() {

@@ -225,13 +225,27 @@ public class MainActivity extends AppCompatActivity {
         tabMatched.setTextColor(tab == tabMatched ? activeColor : inactiveColor);
         tabUnmatched.setTextColor(tab == tabUnmatched ? activeColor : inactiveColor);
 
-        // 移動底線（用 layout params 改寬度和位置）
+        // 選中態填色（品牌綠 soft），其餘透明
+        styleTabFill(tabAll, tab == tabAll);
+        styleTabFill(tabUnchecked, tab == tabUnchecked);
+        styleTabFill(tabMatched, tab == tabMatched);
+        styleTabFill(tabUnmatched, tab == tabUnmatched);
+
+        // 移動底線（用 layout params 改寬度和位置，與填色並存作為選中重點）
         tab.post(() -> {
             ViewGroup.LayoutParams lp = tabIndicator.getLayoutParams();
             lp.width = tab.getWidth();
             tabIndicator.setLayoutParams(lp);
             tabIndicator.setX(tab.getX());
         });
+    }
+
+    private void styleTabFill(TextView tab, boolean active) {
+        if (active) {
+            tab.setBackgroundResource(R.drawable.bg_tab_active);
+        } else {
+            tab.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        }
     }
 
     private void refreshList() {

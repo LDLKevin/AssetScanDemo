@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 篩選 Tab 選中態：品牌綠soft 圓角填色，左右留白避免相鄰貼齊 -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:insetLeft="4dp"
+    android:insetRight="4dp"
+    android:insetTop="2dp"
+    android:insetBottom="2dp">
+    <shape android:shape="rectangle">
+        <solid android:color="@color/status_success_bg" />
+        <corners android:radius="10dp" />
+    </shape>
+</inset>
