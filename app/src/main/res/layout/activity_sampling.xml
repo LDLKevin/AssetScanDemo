@@ -60,33 +60,15 @@
                     android:background="@drawable/bg_badge" />
             </LinearLayout>
 
-            <!-- 按鈕列 -->
-            <LinearLayout
+            <!-- 載入按鈕（完成鍵已移除：離開時 onPause/onStop 會自動寫檔，進度列已足夠） -->
+            <Button
+                android:id="@+id/btn_load"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <Button
-                    android:id="@+id/btn_load"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="8dp"
-                    android:layout_weight="1"
-                    android:background="@drawable/btn_primary"
-                    android:textColor="@color/text_on_primary"
-                    android:text="載入 CSV" />
-
-                <Button
-                    android:id="@+id/btn_done"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:background="@drawable/btn_accent"
-                    android:textColor="@color/text_on_primary"
-                    android:text="完成" />
-            </LinearLayout>
+                android:background="@drawable/btn_primary"
+                android:textColor="@color/text_on_primary"
+                android:text="載入 CSV" />
 
             <!-- ══ Filter Tabs ═══════════════════════════ -->
             <LinearLayout
