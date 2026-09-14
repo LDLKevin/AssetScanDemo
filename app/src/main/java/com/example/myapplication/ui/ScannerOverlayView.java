@@ -51,8 +51,6 @@ public class ScannerOverlayView extends View {
 
     private final float density;
     private final float bracketLen;
-    private final float bracketRadius;
-    private final float frameRadius;
     private final float lineInset;
 
     private final int scanLineColor;
@@ -78,8 +76,6 @@ public class ScannerOverlayView extends View {
         super(context, attrs);
         density = getResources().getDisplayMetrics().density;
         bracketLen = 30f * density;
-        bracketRadius = 18f * density;
-        frameRadius = 18f * density;
         lineInset = 6f * density;
 
         maskPaint.setStyle(Paint.Style.FILL);
@@ -87,8 +83,8 @@ public class ScannerOverlayView extends View {
 
         bracketPaint.setStyle(Paint.Style.STROKE);
         bracketPaint.setStrokeWidth(4f * density);
-        bracketPaint.setStrokeCap(Paint.Cap.ROUND);
-        bracketPaint.setStrokeJoin(Paint.Join.ROUND);
+        bracketPaint.setStrokeCap(Paint.Cap.ROUND);   // 兩端圓頭
+        bracketPaint.setStrokeJoin(Paint.Join.MITER); // 直角轉折（非圓角）
         bracketPaint.setColor(ContextCompat.getColor(context, R.color.scan_reticle));
 
         scanLineColor = ContextCompat.getColor(context, R.color.scan_line);
@@ -232,35 +228,31 @@ public class ScannerOverlayView extends View {
         canvas.drawRect(frame.right, frame.top, w, frame.bottom, maskPaint);  // 右
     }
 
-    /** 四角括號（L 形、圓角）：幾何只在尺寸變動時重建，每幀只 drawPath。 */
+    /** 四角括號（L 形、直角轉折）：幾何只在尺寸變動時重建，每幀只 drawPath。 */
     private void buildBracketPath() {
         float l = frame.left, t = frame.top, r = frame.right, b = frame.bottom;
 
         bracketPath.reset();
         if (frame.width() <= 0 || frame.height() <= 0) return;
 
-        // 左上
+        // 左上：↓ 轉 →
         bracketPath.moveTo(l, t + bracketLen);
-        bracketPath.lineTo(l, t + bracketRadius);
-        bracketPath.quadTo(l, t, l + bracketRadius, t);
+        bracketPath.lineTo(l, t);
         bracketPath.lineTo(l + bracketLen, t);
 
-        // 右上
+        // 右上：← 轉 ↓
         bracketPath.moveTo(r - bracketLen, t);
-        bracketPath.lineTo(r - bracketRadius, t);
-        bracketPath.quadTo(r, t, r, t + bracketRadius);
+        bracketPath.lineTo(r, t);
         bracketPath.lineTo(r, t + bracketLen);
 
-        // 右下
+        // 右下：↑ 轉 ←
         bracketPath.moveTo(r, b - bracketLen);
-        bracketPath.lineTo(r, b - bracketRadius);
-        bracketPath.quadTo(r, b, r - bracketRadius, b);
+        bracketPath.lineTo(r, b);
         bracketPath.lineTo(r - bracketLen, b);
 
-        // 左下
+        // 左下：→ 轉 ↑
         bracketPath.moveTo(l + bracketLen, b);
-        bracketPath.lineTo(l + bracketRadius, b);
-        bracketPath.quadTo(l, b, l, b - bracketRadius);
+        bracketPath.lineTo(l, b);
         bracketPath.lineTo(l, b - bracketLen);
     }
 
@@ -276,7 +268,7 @@ public class ScannerOverlayView extends View {
         if (flashAlpha <= 0f || flashColor == Color.TRANSPARENT) return;
         int alpha = (int) (flashAlpha * 255);
         flashPaint.setColor(ColorUtils.setAlphaComponent(flashColor, alpha));
-        canvas.drawRoundRect(frame, frameRadius, frameRadius, flashPaint);
+        canvas.drawRect(frame, flashPaint);
     }
 
     private static float clamp01(float v) {
