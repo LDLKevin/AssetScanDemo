@@ -7,8 +7,7 @@ import android.os.Bundle;
 import android.provider.DocumentsContract;
 import android.util.Log;
 import android.view.View;
-import android.widget.Button;
-import android.widget.EditText;
+import android.view.ViewGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -35,33 +34,35 @@ import com.example.myapplication.ui.ScannerOverlayView;
 import com.example.myapplication.util.PermissionGuide;
 import com.example.myapplication.util.PhotoEvidence;
 
-import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * 全盤掃描頁（方案 A：相機全螢幕、連續掃描、最少觸碰）。
+ *
+ * <p>掃描結果一律以底部結果卡回饋：相符綠卡自動消散、重複橘卡自動消散、
+ * 不相符紅卡需確認、盤盈（清單外編號）確認卡需確認新增。底部操作列集中
+ * 補光／拍照存證／返回。舊的可編輯表單與歷史導覽已移除。
+ */
 public class ScanActivity extends AppCompatActivity {
 
     private static final String TAG = "ScanActivity";
     private static final int REQ_CAMERA = 100;
-    // 結果停留畫面已由 history/displayAsset 承載，冷卻只需防手震連拍，故縮短。
+    // 結果停留由結果卡承載，冷卻只需防手震連拍，故較短。
     private static final long COOLDOWN_MS = 900;
 
     private PreviewView previewView;
     private ScannerOverlayView scannerOverlay;
     private ScanResultCard resultCard;
     private TextView tvProgressChip;
-    private TextView tvWarning;
-    private EditText etId, etName, etDepartment, etLocation;
-    private Button btnPrev, btnNext, btnWrite, btnDone;
+    private TextView tvHint;
+    private TextView icTorch;
+    private View btnTorch, btnCancel, awaitingOverlay;
 
     private List<Asset> assets;          // 來自 Repository
-    private List<Asset> history;         // 本次盤點過的財產（依時間順序）
-    private int historyIndex = -1;       // 目前顯示的是 history 第幾筆
 
-    private boolean isNewAsset = false;  // 當前顯示的是否為新增財產
-    private boolean isEdited   = false;  // 使用者是否編輯過部門或地點
     private long lastScanTime  = 0;
     private String lastScannedRaw = "";
-    private boolean awaitingConfirm = false;  // 不相符卡等待確認/略過期間，暫停處理後續掃描
+    private boolean awaitingConfirm = false;  // 不相符／盤盈卡等待確認／略過期間，暫停處理後續掃描
 
     private QrScanner scanner;           // 相機 + 解碼管線（deep module）
     private ScanFeedback feedback;       // 聲音＋震動回饋
@@ -94,43 +95,44 @@ public class ScanActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_scan);
 
-        // 處理瀏海
+        // 瀏海：進度 Chip 下推、底部操作列上推（相機全螢幕填滿系統列之後）
         ViewCompat.setOnApplyWindowInsetsListener(
                 findViewById(R.id.scan_root),
                 (view, insets) -> {
                     Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-                    view.setPadding(0, bars.top, 0, bars.bottom);
+
+                    View chip = findViewById(R.id.tv_progress_chip);
+                    ViewGroup.MarginLayoutParams chipParams =
+                            (ViewGroup.MarginLayoutParams) chip.getLayoutParams();
+                    chipParams.topMargin = bars.top
+                            + (int) (12 * getResources().getDisplayMetrics().density);
+                    chip.setLayoutParams(chipParams);
+
+                    View bottomBar = findViewById(R.id.bottom_bar);
+                    ViewGroup.MarginLayoutParams barParams =
+                            (ViewGroup.MarginLayoutParams) bottomBar.getLayoutParams();
+                    barParams.bottomMargin = bars.bottom;
+                    bottomBar.setLayoutParams(barParams);
+
                     return WindowInsetsCompat.CONSUMED;
                 }
         );
 
-        previewView    = findViewById(R.id.preview_view);
-        scannerOverlay = findViewById(R.id.scanner_overlay);
-        resultCard     = findViewById(R.id.scan_result_card);
-        tvProgressChip = findViewById(R.id.tv_progress_chip);
-        tvWarning      = findViewById(R.id.tv_warning);
-        etId         = findViewById(R.id.et_id);
-        etName       = findViewById(R.id.et_name);
-        etDepartment = findViewById(R.id.et_department);
-        etLocation   = findViewById(R.id.et_location);
-        btnPrev      = findViewById(R.id.btn_prev);
-        btnNext      = findViewById(R.id.btn_next);
-        btnWrite     = findViewById(R.id.btn_write);
-        btnDone      = findViewById(R.id.btn_done);
+        previewView     = findViewById(R.id.preview_view);
+        scannerOverlay  = findViewById(R.id.scanner_overlay);
+        resultCard      = findViewById(R.id.scan_result_card);
+        tvProgressChip  = findViewById(R.id.tv_progress_chip);
+        tvHint          = findViewById(R.id.tv_scan_hint);
+        icTorch         = findViewById(R.id.ic_torch);
+        btnTorch        = findViewById(R.id.btn_torch);
+        btnCancel       = findViewById(R.id.btn_cancel);
+        awaitingOverlay = findViewById(R.id.awaiting_overlay);
 
         assets  = AssetRepository.getInstance().getAssets();
-        history = new ArrayList<>();
 
         scanner = new QrScanner();
         feedback = new ScanFeedback(this);
 
-        btnPrev.setOnClickListener(v -> showHistory(historyIndex - 1));
-        btnNext.setOnClickListener(v -> showHistory(historyIndex + 1));
-        btnWrite.setOnClickListener(v -> onWriteClicked());
-        btnDone.setOnClickListener(v -> finish());
-
-        clearForm();
-        updateNavButtons();
         updateProgressChip();
 
         permissionDenied = findViewById(R.id.permission_denied);
@@ -138,6 +140,8 @@ public class ScanActivity extends AppCompatActivity {
                 .setOnClickListener(v -> PermissionGuide.openAppSettings(this));
 
         findViewById(R.id.btn_capture).setOnClickListener(v -> capturePhoto());
+        btnCancel.setOnClickListener(v -> finish());
+        btnTorch.setOnClickListener(v -> toggleTorch());
 
         // 請求相機權限
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
@@ -147,16 +151,6 @@ public class ScanActivity extends AppCompatActivity {
             ActivityCompat.requestPermissions(this,
                     new String[]{ Manifest.permission.CAMERA }, REQ_CAMERA);
         }
-
-        TextView btnTorch = findViewById(R.id.btn_torch);
-        btnTorch.setOnClickListener(v -> {
-            if (!scanner.hasFlashUnit()) {
-                Toast.makeText(this, "此裝置不支援手電筒", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            boolean on = scanner.toggleTorch();
-            btnTorch.setText(on ? "💡" : "🔦");
-        });
     }
 
     @Override
@@ -168,7 +162,6 @@ public class ScanActivity extends AppCompatActivity {
                 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             startCamera();
         } else {
-            // 不直接關頁：顯示引導畫面，提供「前往設定」
             permissionDenied.setVisibility(View.VISIBLE);
         }
     }
@@ -176,7 +169,6 @@ public class ScanActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // 從系統設定授權返回：若已取得權限則收起引導、啟動相機
         if (!cameraStarted
                 && ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
                 == PackageManager.PERMISSION_GRANTED) {
@@ -191,52 +183,21 @@ public class ScanActivity extends AppCompatActivity {
         scanner.bind(this, previewView, this::handleScanResult);
     }
 
-    /** 由 colors.xml 產生單色 tint，統一按鈕上色、避免硬編碼。 */
-    private android.content.res.ColorStateList tint(int colorRes) {
-        return android.content.res.ColorStateList.valueOf(ContextCompat.getColor(this, colorRes));
-    }
-
-    // QR 破損：拍整張標籤存到 CSV 同資料夾（檔名帶目前顯示的編號，無則 UNKNOWN）
-    private void capturePhoto() {
-        String id = etId.getText().toString().trim();
-        String name = PhotoEvidence.buildFileName(id);
-        Uri uri = PhotoEvidence.createInCsvFolder(this, name);
-        if (uri == null) {
-            Toast.makeText(this, "請先載入 CSV（需資料夾權限）", Toast.LENGTH_LONG).show();
-            return;
-        }
-        pendingPhotoUri = uri;
-        pendingPhotoName = name;
-        takePhoto.launch(uri);
-    }
-
+    // ── 掃到結果 ────────────────────────────────────────
     private void handleScanResult(String raw) {
-        // 不相符卡等待使用者「確認寫入」或「略過」期間，暫停處理，避免直接掃下一張時
-        // 靜默丟失這筆未確認的不相符（也避免嗶聲／卡片每隔冷卻時間重播）。
-        if (awaitingConfirm) {
-            return;
-        }
+        // 待確認期間暫停，避免直接掃下一張時靜默丟失這筆，也避免嗶聲／卡片重播。
+        if (awaitingConfirm) return;
 
         long now = System.currentTimeMillis();
-
-        // 防手震連拍：距上次有效掃描太近 → 忽略（取代原本相機層級的幀冷卻）。
-        if (now - lastScanTime < COOLDOWN_MS) {
-            return;
-        }
-        // 同一張 QR 短時間內去重（避免停在鏡頭前被連續記錄）。
-        if (raw.equals(lastScannedRaw) && now - lastScanTime < COOLDOWN_MS * 2) {
-            return;
-        }
+        if (now - lastScanTime < COOLDOWN_MS) return;
+        if (raw.equals(lastScannedRaw) && now - lastScanTime < COOLDOWN_MS * 2) return;
 
         ScanClassifier.Result r =
                 ScanClassifier.classify(raw, assets, AssetIdFormat::isValid);
 
         // 誤觸：不成格式 → 靜默忽略，不動冷卻、不刷新畫面
-        if (r.outcome == ScanClassifier.Outcome.IGNORED_INVALID) {
-            return;
-        }
+        if (r.outcome == ScanClassifier.Outcome.IGNORED_INVALID) return;
 
-        // 到這裡才算一次有效掃描，才起算冷卻
         lastScannedRaw = raw;
         lastScanTime   = now;
 
@@ -247,7 +208,6 @@ public class ScanActivity extends AppCompatActivity {
 
                 // 重複掃描：已盤點過的財產再掃 → 橘卡提示，不覆蓋原記錄
                 if (asset.status != Asset.Status.UNCHECKED) {
-                    displayAsset(asset, false);
                     resultCard.showDuplicate("此財產已完成盤點", asset.id + "　" + asset.name);
                     break;
                 }
@@ -255,94 +215,93 @@ public class ScanActivity extends AppCompatActivity {
                 if (r.outcome == ScanClassifier.Outcome.MATCHED) {
                     // 相符：即時落檔，綠卡自動消散
                     AssetRepository.getInstance().recordCheck(asset, Asset.Status.MATCHED);
-                    history.add(asset);
-                    historyIndex = history.size() - 1;
-                    displayAsset(asset, false);
                     if (scannerOverlay != null) scannerOverlay.flashSuccess();
                     feedback.success();
                     resultCard.showSuccess("✅ 盤點成功", asset.id + "　" + asset.name);
                 } else {
-                    // 不相符：先不落檔，紅卡列出差異對比，按「確認寫入不相符」才寫；
-                    // 期間暫停掃描，並提供「略過」讓使用者明確放棄這筆。
+                    // 不相符：先不落檔，紅卡列差異對比，確認才寫；期間暗遮罩暫停掃描。
                     if (scannerOverlay != null) scannerOverlay.flashError();
                     feedback.unmatched();
                     awaitingConfirm = true;
+                    setAwaiting(true);
                     ScannedTag scanned = ScannedTag.parse(raw);
                     resultCard.showUnmatched("⚠️ 部門或地點不相符", scanned, asset,
-                            () -> {   // 確認寫入
+                            () -> {   // 確認寫入不相符
                                 AssetRepository.getInstance().recordCheck(asset, Asset.Status.UNMATCHED);
-                                history.add(asset);
-                                historyIndex = history.size() - 1;
-                                displayAsset(asset, false);
-                                updateNavButtons();
-                                updateProgressChip();
+                                setAwaiting(false);
                                 awaitingConfirm = false;
+                                updateProgressChip();
                             },
-                            () -> awaitingConfirm = false);   // 略過（不寫入）
+                            () -> {   // 略過（不寫入）
+                                setAwaiting(false);
+                                awaitingConfirm = false;
+                            });
                 }
                 break;
             }
             case SURPLUS: {
-                // 盤盈（未列入清單）：沿用既有表單流程（顯示警告並啟用「寫入」）
-                Asset newAsset = new Asset(r.id, r.name, r.department, r.location,
-                        Asset.Status.UNCHECKED, "");
-                displayAsset(newAsset, true);
+                // 盤盈（清單外編號）：確認卡提示，確認才新增為已盤點（取代舊表單流程）
+                if (scannerOverlay != null) scannerOverlay.flashError();
+                feedback.unmatched();
+                awaitingConfirm = true;
+                setAwaiting(true);
+                String detail = r.id + "　" + safe(r.name) + "\n"
+                        + safe(r.department) + " · " + safe(r.location);
+                resultCard.showConfirm("⚠️ 此編號不在清單", detail, "確認新增（已盤點）",
+                        R.color.status_warning_bg, R.color.status_warning,
+                        () -> {   // 確認新增
+                            Asset newAsset = new Asset(r.id, r.name, r.department, r.location,
+                                    Asset.Status.UNCHECKED, "");
+                            AssetRepository.getInstance().addAsMatched(newAsset);
+                            setAwaiting(false);
+                            awaitingConfirm = false;
+                            updateProgressChip();
+                            Toast.makeText(this, "✅ 已新增：" + r.id, Toast.LENGTH_SHORT).show();
+                        },
+                        () -> {   // 略過
+                            setAwaiting(false);
+                            awaitingConfirm = false;
+                        });
                 break;
             }
             default:
                 break;
         }
 
-        updateNavButtons();
         updateProgressChip();
     }
 
-
-    // 顯示財產到表格
-    private void displayAsset(Asset asset, boolean isNew) {
-        isNewAsset = isNew;
-        isEdited   = false;
-
-        etId.setText(asset.id);
-        etName.setText(asset.name);
-        etDepartment.setText(asset.department);
-        etLocation.setText(asset.location);
-
-        if (isNew) {
-            tvWarning.setVisibility(View.VISIBLE);
-            btnWrite.setText("寫入");
-            btnWrite.setEnabled(true);
-            btnWrite.setBackgroundTintList(tint(R.color.evergreen_primary));
-        } else {
-            tvWarning.setVisibility(View.GONE);
-            btnWrite.setText("寫入");
-            btnWrite.setEnabled(false);
-            btnWrite.setBackgroundTintList(tint(R.color.btn_disabled));
+    /** 待確認狀態：暗遮罩＋取景框紅角停線＋提示改字（A4）。 */
+    private void setAwaiting(boolean awaiting) {
+        if (awaitingOverlay != null) {
+            awaitingOverlay.setVisibility(awaiting ? View.VISIBLE : View.GONE);
         }
+        if (scannerOverlay != null) scannerOverlay.setAwaitingConfirm(awaiting);
+        tvHint.setText(awaiting ? "請先處理待確認項目" : "對準 QR Code 自動掃描");
+        tvHint.setTextColor(ContextCompat.getColor(this,
+                awaiting ? R.color.scan_flash_error : R.color.text_on_primary));
     }
 
-    private void clearForm() {
-        etId.setText("");
-        etName.setText("");
-        etDepartment.setText("");
-        etLocation.setText("");
-        tvWarning.setVisibility(View.GONE);
-        btnWrite.setEnabled(false);
-        btnWrite.setText("寫入");
-        btnWrite.setBackgroundTintList(tint(R.color.btn_disabled));
+    // QR 破損：拍整張標籤存到 CSV 同資料夾（QR 破損無從得知編號，故檔名以 UNKNOWN 起頭）
+    private void capturePhoto() {
+        String name = PhotoEvidence.buildFileName("");
+        Uri uri = PhotoEvidence.createInCsvFolder(this, name);
+        if (uri == null) {
+            Toast.makeText(this, "請先載入 CSV（需資料夾權限）", Toast.LENGTH_LONG).show();
+            return;
+        }
+        pendingPhotoUri = uri;
+        pendingPhotoName = name;
+        takePhoto.launch(uri);
     }
 
-    // 上一筆 / 下一筆
-    private void showHistory(int newIndex) {
-        if (newIndex < 0 || newIndex >= history.size()) return;
-        historyIndex = newIndex;
-        displayAsset(history.get(newIndex), false);
-        updateNavButtons();
-    }
-
-    private void updateNavButtons() {
-        btnPrev.setEnabled(historyIndex > 0);
-        btnNext.setEnabled(historyIndex >= 0 && historyIndex < history.size() - 1);
+    private void toggleTorch() {
+        if (!scanner.hasFlashUnit()) {
+            Toast.makeText(this, "此裝置不支援手電筒", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        boolean on = scanner.toggleTorch();
+        icTorch.setText(on ? "💡" : "🔦");
     }
 
     // 常駐進度：已盤（相符＋不符）/ 總數
@@ -360,42 +319,8 @@ public class ScanActivity extends AppCompatActivity {
         tvProgressChip.setText("已盤 " + checked + " / " + total);
     }
 
-    // 寫入按鈕
-    private void onWriteClicked() {
-        String id         = etId.getText().toString().trim();
-        String name       = etName.getText().toString().trim();
-        String department = etDepartment.getText().toString().trim();
-        String location   = etLocation.getText().toString().trim();
-
-        if (isNewAsset) {
-            // 新增財產：直接視為已盤點且相符（狀態、時間、加入清單、dirty 皆由 repository 處理）
-            Asset newAsset = new Asset(id, name, department, location,
-                    Asset.Status.UNCHECKED, "");
-            AssetRepository.getInstance().addAsMatched(newAsset);
-            history.add(newAsset);
-            historyIndex = history.size() - 1;
-            Toast.makeText(this, "✅ 已新增：" + id, Toast.LENGTH_SHORT).show();
-
-            isNewAsset = false;
-            displayAsset(newAsset, false);
-        } else if (isEdited) {
-            // 更新既有財產
-            Asset target = null;
-            for (Asset a : assets) {
-                if (a.id.equals(id)) { target = a; break; }
-            }
-            if (target != null) {
-                AssetRepository.getInstance().recordEdit(target, department, location);
-                Toast.makeText(this, "✅ 已更新：" + id, Toast.LENGTH_SHORT).show();
-                isEdited = false;
-                btnWrite.setText("寫入");
-                btnWrite.setEnabled(false);
-                btnWrite.setBackgroundTintList(tint(R.color.btn_disabled));
-            }
-        }
-
-        updateNavButtons();
-        updateProgressChip();
+    private static String safe(String s) {
+        return s == null ? "" : s;
     }
 
     // 定點寫檔：只有記憶體有未落檔變更時才真正寫一次（背景執行緒）。

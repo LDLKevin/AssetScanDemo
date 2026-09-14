@@ -121,6 +121,37 @@ public class ScanResultCard extends FrameLayout {
         reveal();
     }
 
+    /**
+     * 一般確認卡（不含差異對比）：如全盤「盤盈（清單外編號）」需確認新增。
+     * 不自動消散，提供確認與「略過」。
+     */
+    public void showConfirm(String heading, String detail, String confirmLabel,
+                            int bgColorRes, int fgColorRes,
+                            Runnable onConfirm, Runnable onDismiss) {
+        style(bgColorRes, fgColorRes);
+        title.setText(heading);
+        setMessage(detail);
+        diffContainer.setVisibility(GONE);
+
+        btnConfirm.setText(confirmLabel);
+        btnConfirm.setBackgroundTintList(
+                ColorStateList.valueOf(ContextCompat.getColor(getContext(), fgColorRes)));
+        btnConfirm.setVisibility(VISIBLE);
+        btnConfirm.setOnClickListener(v -> {
+            if (onConfirm != null) onConfirm.run();
+            hide();
+        });
+
+        btnDismiss.setVisibility(VISIBLE);
+        btnDismiss.setOnClickListener(v -> {
+            if (onDismiss != null) onDismiss.run();
+            hide();
+        });
+
+        removeCallbacks(autoHide);
+        reveal();
+    }
+
     public void hide() {
         animate().cancel();
         removeCallbacks(autoHide);
