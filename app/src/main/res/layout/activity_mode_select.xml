@@ -133,7 +133,7 @@
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="wrap_content"
-            android:text="完全離線作業。CSV 由 PC 端 ERP 匯出，透過 USB 傳至手機後於此讀取；盤點結果亦回寫至同一份 CSV。"
+            android:text="完全離線作業。CSV 由 PC 端 MUI 匯出，透過 USB 傳至手機後於此讀取；盤點結果亦回寫至同一份 CSV。"
             android:textColor="@color/text_secondary"
             android:textSize="12sp"
             android:lineSpacingExtra="2dp" />
