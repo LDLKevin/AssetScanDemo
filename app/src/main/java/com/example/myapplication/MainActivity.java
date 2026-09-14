@@ -20,7 +20,6 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -41,8 +40,9 @@ public class MainActivity extends AppCompatActivity {
 
     private List<Asset> assets;
     private AssetAdapter adapter;
-    private TextView tvProgress;
-    private Button btnScan;
+    private TextView tvFilename, tvProgressCount, tvProgressDetail, tvProgressPct;
+    private ProgressBar pbProgress;
+    private View btnScan;
     private RecyclerView recyclerView;
     private enum Filter { ALL, UNCHECKED, MATCHED, UNMATCHED }
     private Filter currentFilter = Filter.ALL;
@@ -76,19 +76,21 @@ public class MainActivity extends AppCompatActivity {
                 }
         );
 
-        tvProgress  = findViewById(R.id.tv_progress);
-        btnScan     = findViewById(R.id.btn_scan);
+        tvFilename       = findViewById(R.id.tv_filename);
+        tvProgressCount  = findViewById(R.id.tv_progress_count);
+        tvProgressDetail = findViewById(R.id.tv_progress_detail);
+        tvProgressPct    = findViewById(R.id.tv_progress_pct);
+        pbProgress       = findViewById(R.id.pb_progress);
+        btnScan          = findViewById(R.id.btn_scan);
 
         recyclerView = findViewById(R.id.recycler_view);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
-        findViewById(R.id.btn_load).setOnClickListener(v ->
-                folderPicker.launch(null)
-        );
+        findViewById(R.id.btn_back).setOnClickListener(v -> finish());
+        findViewById(R.id.btn_load).setOnClickListener(v -> folderPicker.launch(null));
 
-        btnScan.setOnClickListener(v -> {
-            startActivity(new Intent(this, ScanActivity.class));
-        });
+        btnScan.setOnClickListener(v -> startActivity(new Intent(this, ScanActivity.class)));
+        setScanEnabled(false);
 
         tabAll        = findViewById(R.id.tab_all);
         tabUnchecked  = findViewById(R.id.tab_unchecked);
@@ -109,7 +111,8 @@ public class MainActivity extends AppCompatActivity {
             assets = existing;
             adapter = new AssetAdapter(this, filteredAssets);
             recyclerView.setAdapter(adapter);
-            btnScan.setEnabled(true);
+            setScanEnabled(true);
+            setFilename(AssetRepository.getInstance().getCsvName());
             selectFilter(Filter.ALL, tabAll);
             updateProgress();
         }
@@ -139,15 +142,21 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         if (csvs.size() == 1) {
-            confirmThenLoad(csvs.get(0).getUri());
+            chooseCsv(csvs.get(0));
             return;
         }
         String[] names = new String[csvs.size()];
         for (int i = 0; i < csvs.size(); i++) names[i] = csvs.get(i).getName();
         new AlertDialog.Builder(this)
                 .setTitle("選擇 CSV 檔")
-                .setItems(names, (d, which) -> confirmThenLoad(csvs.get(which).getUri()))
+                .setItems(names, (d, which) -> chooseCsv(csvs.get(which)))
                 .show();
+    }
+
+    // 選定某個 CSV：記住檔名（header 顯示）後進入載入流程
+    private void chooseCsv(DocumentFile f) {
+        AssetRepository.getInstance().setCsvName(f.getName());
+        confirmThenLoad(f.getUri());
     }
 
     // 有進行中的盤點進度時，載入新清單前先警示（避免無聲覆蓋未匯出的進度）
@@ -195,7 +204,8 @@ public class MainActivity extends AppCompatActivity {
 
                     refreshList();      // 根據當前篩選刷新
                     updateProgress();
-                    btnScan.setEnabled(true);
+                    setScanEnabled(true);
+                    setFilename(AssetRepository.getInstance().getCsvName());
 
                     // 預設選中「全部」
                     selectFilter(Filter.ALL, tabAll);
@@ -225,13 +235,26 @@ public class MainActivity extends AppCompatActivity {
         long matched   = assets.stream().filter(a -> a.status == Asset.Status.MATCHED).count();
         long unmatched = assets.stream().filter(a -> a.status == Asset.Status.UNMATCHED).count();
         long checked   = matched + unmatched;
+        int pct = total > 0 ? (int) Math.round(checked * 100.0 / total) : 0;
 
-        tvProgress.setText("進度：" + checked + " / " + total);
+        tvProgressCount.setText(checked + " / " + total + " 筆");
+        pbProgress.setProgress(pct);
+        tvProgressDetail.setText("已盤點 " + matched + "、不相符 " + unmatched);
+        tvProgressPct.setText(pct + "%" + (pct == 100 ? "  ✓ 完成" : ""));
 
         tabAll.setText("全部 " + total);
         tabUnchecked.setText("未盤點 " + unchecked);
         tabMatched.setText("已盤點 " + matched);
         tabUnmatched.setText("不相符 " + unmatched);
+    }
+
+    private void setScanEnabled(boolean enabled) {
+        btnScan.setEnabled(enabled);
+        btnScan.setAlpha(enabled ? 1f : 0.45f);
+    }
+
+    private void setFilename(String name) {
+        tvFilename.setText(name == null || name.isEmpty() ? "尚未載入 CSV" : name);
     }
 
     private void selectFilter(Filter filter, TextView tab) {

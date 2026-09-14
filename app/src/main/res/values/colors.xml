@@ -12,6 +12,8 @@
     <color name="bg_main">#F5F8F6</color>              <!-- 淡綠灰背景 -->
     <color name="bg_card">#FFFFFF</color>
     <color name="bg_field">#F0F4F1</color>             <!-- 表單欄位背景 -->
+    <color name="divider">#E4EBE7</color>              <!-- 卡片／header 邊框 -->
+    <color name="progress_track">#DCE6E0</color>       <!-- 進度條底槽 -->
 
     <!-- 狀態色 -->
     <color name="status_success">#005A30</color>       <!-- 已盤點，綠色 -->

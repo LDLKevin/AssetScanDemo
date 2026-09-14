@@ -7,7 +7,6 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -52,7 +51,8 @@ public class SamplingActivity extends AppCompatActivity {
     private enum Filter { ALL, UNCHECKED, MATCHED, UNMATCHED }
     private Filter currentFilter = Filter.ALL;
 
-    private TextView tvProgress, tvEmpty;
+    private TextView tvFilename, tvProgressCount, tvProgressDetail, tvProgressPct, tvEmpty;
+    private ProgressBar pbProgress;
     private TextView tabAll, tabUnchecked, tabMatched, tabUnmatched;
     private View tabIndicator;
     private ProgressBar progressLoading;
@@ -95,7 +95,11 @@ public class SamplingActivity extends AppCompatActivity {
                 }
         );
 
-        tvProgress   = findViewById(R.id.tv_progress);
+        tvFilename       = findViewById(R.id.tv_filename);
+        tvProgressCount  = findViewById(R.id.tv_progress_count);
+        tvProgressDetail = findViewById(R.id.tv_progress_detail);
+        tvProgressPct    = findViewById(R.id.tv_progress_pct);
+        pbProgress       = findViewById(R.id.pb_progress);
         tvEmpty      = findViewById(R.id.tv_empty);
         progressLoading = findViewById(R.id.progress_loading);
         recyclerView = findViewById(R.id.recycler_view);
@@ -107,6 +111,7 @@ public class SamplingActivity extends AppCompatActivity {
         tabUnmatched = findViewById(R.id.tab_unmatched);
         tabIndicator = findViewById(R.id.tab_indicator);
 
+        findViewById(R.id.btn_back).setOnClickListener(v -> finish());
         findViewById(R.id.btn_load).setOnClickListener(v -> folderPicker.launch(null));
 
         tabAll.setOnClickListener(v -> selectFilter(Filter.ALL, tabAll));
@@ -119,6 +124,7 @@ public class SamplingActivity extends AppCompatActivity {
         if (existing != null && !existing.isEmpty()) {
             assets = existing;
             bindAdapter();
+            setFilename(AssetRepository.getInstance().getCsvName());
             selectFilter(Filter.ALL, tabAll);
             updateProgress();
         }
@@ -148,15 +154,21 @@ public class SamplingActivity extends AppCompatActivity {
             return;
         }
         if (csvs.size() == 1) {
-            confirmThenUse(csvs.get(0).getUri());
+            chooseCsv(csvs.get(0));
             return;
         }
         String[] names = new String[csvs.size()];
         for (int i = 0; i < csvs.size(); i++) names[i] = csvs.get(i).getName();
         new AlertDialog.Builder(this)
                 .setTitle("選擇 CSV 檔")
-                .setItems(names, (d, which) -> confirmThenUse(csvs.get(which).getUri()))
+                .setItems(names, (d, which) -> chooseCsv(csvs.get(which)))
                 .show();
+    }
+
+    // 選定某個 CSV：記住檔名（header 顯示）後進入載入流程
+    private void chooseCsv(DocumentFile f) {
+        AssetRepository.getInstance().setCsvName(f.getName());
+        confirmThenUse(f.getUri());
     }
 
     // 有進行中的盤點進度時，載入新清單前先警示（避免無聲覆蓋未匯出的進度）
@@ -204,6 +216,7 @@ public class SamplingActivity extends AppCompatActivity {
                     assets = result;
                     AssetRepository.getInstance().setAssets(assets);
                     bindAdapter();
+                    setFilename(AssetRepository.getInstance().getCsvName());
                     selectFilter(Filter.ALL, tabAll);
                     updateProgress();
                     Snackbar.make(findViewById(R.id.sampling_root),
@@ -323,12 +336,21 @@ public class SamplingActivity extends AppCompatActivity {
         long matched   = assets.stream().filter(a -> a.status == Asset.Status.MATCHED).count();
         long unmatched = assets.stream().filter(a -> a.status == Asset.Status.UNMATCHED).count();
         long checked   = matched + unmatched;
+        int pct = total > 0 ? (int) Math.round(checked * 100.0 / total) : 0;
 
-        tvProgress.setText("進度：" + checked + " / " + total);
+        tvProgressCount.setText(checked + " / " + total + " 筆");
+        pbProgress.setProgress(pct);
+        tvProgressDetail.setText("已盤點 " + matched + "、不相符 " + unmatched);
+        tvProgressPct.setText(pct + "%" + (pct == 100 ? "  ✓ 完成" : ""));
+
         tabAll.setText("全部 " + total);
         tabUnchecked.setText("未盤點 " + unchecked);
         tabMatched.setText("已盤點 " + matched);
         tabUnmatched.setText("不相符 " + unmatched);
+    }
+
+    private void setFilename(String name) {
+        tvFilename.setText(name == null || name.isEmpty() ? "尚未載入 CSV" : name);
     }
 
     // ── 定點寫檔 ─────────────────────────────────────────
