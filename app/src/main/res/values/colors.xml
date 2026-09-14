@@ -26,6 +26,9 @@
     <color name="text_secondary">#5A6E63</color>
     <color name="text_hint">#9CA8A2</color>
     <color name="text_on_primary">#FFFFFF</color>
+    <color name="text_on_primary_muted">#BCDBCB</color>   <!-- 綠底上的次要文字 -->
+    <color name="divider_on_primary">#33FFFFFF</color>   <!-- 綠底上的分隔線 -->
+    <color name="offline_note_bg">#EEF3F0</color>        <!-- 首頁離線說明條底色 -->
 
     <!-- 按鈕色 -->
     <color name="btn_primary">#005A30</color>

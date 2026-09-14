@@ -41,61 +41,20 @@
         android:text="請選擇作業流程"
         android:textColor="@color/text_secondary"
         android:textSize="14sp"
-        android:layout_marginBottom="28dp" />
+        android:layout_marginBottom="24dp" />
 
-    <!-- 上次作業摘要 -->
-    <LinearLayout
-        android:id="@+id/summary_card"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:background="@drawable/bg_card"
-        android:elevation="1dp"
-        android:padding="18dp"
-        android:layout_marginBottom="32dp">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="上次作業"
-            android:textColor="@color/text_secondary"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            android:letterSpacing="0.15" />
-
-        <TextView
-            android:id="@+id/tv_summary_main"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="尚無資料"
-            android:textColor="@color/text_primary"
-            android:textSize="16sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/tv_summary_sub"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:text="請進入下方作業並載入 CSV"
-            android:textColor="@color/text_secondary"
-            android:textSize="13sp" />
-    </LinearLayout>
-
-    <!-- 全盤按鈕 -->
+    <!-- 全盤卡：標題＋說明＋上次作業摘要（摘要就近綁在此模式卡上） -->
     <LinearLayout
         android:id="@+id/btn_full"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:background="@drawable/btn_primary"
-        android:padding="28dp"
-        android:gravity="center"
+        android:padding="22dp"
         android:clickable="true"
         android:focusable="true"
         android:elevation="2dp"
-        android:layout_marginBottom="16dp">
+        android:layout_marginBottom="14dp">
 
         <TextView
             android:layout_width="wrap_content"
@@ -106,20 +65,63 @@
             android:textStyle="bold"
             android:fontFamily="sans-serif-medium" />
 
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="載入完整清單，相機常駐連續掃描"
+            android:textColor="@color/text_on_primary_muted"
+            android:textSize="13sp"
+            android:layout_marginTop="3dp" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/divider_on_primary"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="12dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="上次作業"
+            android:textColor="@color/text_on_primary_muted"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.15" />
+
+        <TextView
+            android:id="@+id/tv_summary_main"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:text="尚無資料"
+            android:textColor="@color/text_on_primary"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tv_summary_sub"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="請進入下方作業並載入 CSV"
+            android:textColor="@color/text_on_primary_muted"
+            android:textSize="13sp" />
+
     </LinearLayout>
 
-    <!-- 抽盤按鈕 -->
+    <!-- 抽盤卡：標題＋說明 -->
     <LinearLayout
         android:id="@+id/btn_sampling"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:background="@drawable/btn_secondary"
-        android:padding="28dp"
-        android:gravity="center"
+        android:padding="22dp"
         android:clickable="true"
         android:focusable="true"
-        android:elevation="2dp">
+        android:elevation="2dp"
+        android:layout_marginBottom="20dp">
 
         <TextView
             android:layout_width="wrap_content"
@@ -129,6 +131,42 @@
             android:textSize="24sp"
             android:textStyle="bold"
             android:fontFamily="sans-serif-medium" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="從清單逐筆點選目標財產驗證"
+            android:textColor="@color/text_on_primary_muted"
+            android:textSize="13sp"
+            android:layout_marginTop="3dp" />
+
+    </LinearLayout>
+
+    <!-- 離線作業說明條 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="@drawable/bg_card"
+        android:padding="14dp"
+        android:gravity="top">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ⓘ"
+            android:textColor="@color/text_hint"
+            android:textSize="14sp"
+            android:layout_marginEnd="8dp" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="完全離線作業。CSV 由 PC 端 ERP 匯出，透過 USB 傳至手機後於此讀取；盤點結果亦回寫至同一份 CSV。"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            android:lineSpacingExtra="2dp" />
 
     </LinearLayout>
 
