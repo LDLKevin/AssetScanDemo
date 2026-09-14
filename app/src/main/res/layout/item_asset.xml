@@ -10,15 +10,18 @@
     android:background="@drawable/bg_card_item"
     android:elevation="1dp">
 
-    <!-- 狀態圓點 -->
-    <View
+    <!-- 狀態圖示：○ 未盤點 / ✓ 已盤點 / ✗ 不相符（以形狀辨狀態，不只靠顏色） -->
+    <TextView
         android:id="@+id/view_status"
-        android:layout_width="10dp"
-        android:layout_height="10dp"
+        android:layout_width="20dp"
+        android:layout_height="wrap_content"
         android:layout_gravity="top"
-        android:layout_marginTop="6dp"
-        android:layout_marginEnd="12dp"
-        android:background="@drawable/circle_unchecked" />
+        android:layout_marginTop="1dp"
+        android:layout_marginEnd="10dp"
+        android:gravity="center"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:text="○" />
 
     <!-- 資訊區 -->
     <LinearLayout

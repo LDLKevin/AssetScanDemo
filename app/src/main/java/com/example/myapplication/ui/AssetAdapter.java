@@ -61,7 +61,8 @@ public class AssetAdapter extends RecyclerView.Adapter<AssetAdapter.ViewHolder> 
         switch (asset.status) {
             case MATCHED:
                 // 已盤點 + 相符（綠色）
-                holder.viewStatus.setBackgroundResource(R.drawable.circle_checked);
+                holder.viewStatus.setText("✓");
+                holder.viewStatus.setTextColor(ContextCompat.getColor(context, R.color.status_success));
                 holder.itemView.setBackgroundResource(R.drawable.bg_card_item_matched);
                 holder.tvId.setTextColor(ContextCompat.getColor(context, R.color.status_success));
 
@@ -77,7 +78,8 @@ public class AssetAdapter extends RecyclerView.Adapter<AssetAdapter.ViewHolder> 
 
             case UNMATCHED:
                 // 已盤點 + 不相符（橘色）
-                holder.viewStatus.setBackgroundResource(R.drawable.circle_unmatched);
+                holder.viewStatus.setText("✗");
+                holder.viewStatus.setTextColor(ContextCompat.getColor(context, R.color.status_warning));
                 holder.itemView.setBackgroundResource(R.drawable.bg_card_item_unmatched);
                 holder.tvId.setTextColor(ContextCompat.getColor(context, R.color.status_warning));
 
@@ -94,7 +96,8 @@ public class AssetAdapter extends RecyclerView.Adapter<AssetAdapter.ViewHolder> 
             case UNCHECKED:
             default:
                 // 未盤點
-                holder.viewStatus.setBackgroundResource(R.drawable.circle_unchecked);
+                holder.viewStatus.setText("○");
+                holder.viewStatus.setTextColor(ContextCompat.getColor(context, R.color.text_secondary));
                 holder.itemView.setBackgroundResource(R.drawable.bg_card_item);
                 holder.tvId.setTextColor(ContextCompat.getColor(context, R.color.text_primary));
                 holder.tvCheckedAt.setVisibility(View.GONE);
@@ -112,7 +115,7 @@ public class AssetAdapter extends RecyclerView.Adapter<AssetAdapter.ViewHolder> 
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
-        View     viewStatus;
+        TextView viewStatus;
         TextView tvId, tvName, tvDepartment, tvLocation, tvCheckedAt, tvTag;
 
         ViewHolder(View itemView) {
