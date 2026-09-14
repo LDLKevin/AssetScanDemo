@@ -91,15 +91,15 @@
         android:layout_marginHorizontal="16dp"
         android:layout_marginBottom="104dp" />
 
-    <!-- ══ 底部操作列：補光 / 拍照存證 / 返回 ══════════════ -->
+    <!-- ══ 底部操作列：補光 / 拍照存證 / 返回（原型樣式：暗色列＋圖示座＋線性圖示） ══ -->
     <LinearLayout
         android:id="@+id/bottom_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
         android:orientation="horizontal"
-        android:background="@color/scan_bar_bg"
-        android:paddingVertical="12dp"
+        android:background="@drawable/bg_scan_bar"
+        android:paddingVertical="14dp"
         android:paddingHorizontal="8dp">
 
         <!-- 補光 -->
@@ -110,23 +110,32 @@
             android:layout_weight="1"
             android:orientation="vertical"
             android:gravity="center"
-            android:padding="8dp"
+            android:padding="6dp"
             android:clickable="true"
             android:focusable="true"
             android:background="?attr/selectableItemBackground">
+            <FrameLayout
+                android:id="@+id/chip_torch"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="@drawable/bg_scan_chip">
+                <ImageView
+                    android:id="@+id/ic_torch"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_flash"
+                    android:tint="@color/scan_ico_dim"
+                    android:contentDescription="補光" />
+            </FrameLayout>
             <TextView
-                android:id="@+id/ic_torch"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="🔦"
-                android:textSize="22sp" />
-            <TextView
+                android:id="@+id/lbl_torch"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="補光"
-                android:textColor="@color/text_on_primary"
+                android:textColor="@color/scan_label"
                 android:textSize="12sp"
-                android:layout_marginTop="4dp" />
+                android:layout_marginTop="7dp" />
         </LinearLayout>
 
         <!-- 拍照存證 -->
@@ -137,22 +146,29 @@
             android:layout_weight="1"
             android:orientation="vertical"
             android:gravity="center"
-            android:padding="8dp"
+            android:padding="6dp"
             android:clickable="true"
             android:focusable="true"
             android:background="?attr/selectableItemBackground">
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="📷"
-                android:textSize="22sp" />
+            <FrameLayout
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="@drawable/bg_scan_chip">
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_camera"
+                    android:tint="@color/scan_ico"
+                    android:contentDescription="拍照存證" />
+            </FrameLayout>
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="拍照存證"
-                android:textColor="@color/text_on_primary"
+                android:textColor="@color/scan_label"
                 android:textSize="12sp"
-                android:layout_marginTop="4dp" />
+                android:layout_marginTop="7dp" />
         </LinearLayout>
 
         <!-- 返回 -->
@@ -163,23 +179,29 @@
             android:layout_weight="1"
             android:orientation="vertical"
             android:gravity="center"
-            android:padding="8dp"
+            android:padding="6dp"
             android:clickable="true"
             android:focusable="true"
             android:background="?attr/selectableItemBackground">
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="✕"
-                android:textColor="@color/text_on_primary"
-                android:textSize="22sp" />
+            <FrameLayout
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="@drawable/bg_scan_chip">
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_arrow_back"
+                    android:tint="@color/scan_ico"
+                    android:contentDescription="返回" />
+            </FrameLayout>
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="返回"
-                android:textColor="@color/text_on_primary"
+                android:textColor="@color/scan_label"
                 android:textSize="12sp"
-                android:layout_marginTop="4dp" />
+                android:layout_marginTop="7dp" />
         </LinearLayout>
     </LinearLayout>
 

@@ -2,12 +2,14 @@ package com.example.myapplication;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.content.res.ColorStateList;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.DocumentsContract;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -55,8 +57,9 @@ public class ScanActivity extends AppCompatActivity {
     private ScanResultCard resultCard;
     private TextView tvProgressChip;
     private TextView tvHint;
-    private TextView icTorch;
-    private View btnTorch, btnCancel, awaitingOverlay;
+    private TextView lblTorch;
+    private ImageView icTorch;
+    private View btnTorch, btnCancel, awaitingOverlay, chipTorch;
 
     private List<Asset> assets;          // 來自 Repository
 
@@ -122,6 +125,8 @@ public class ScanActivity extends AppCompatActivity {
         tvProgressChip  = findViewById(R.id.tv_progress_chip);
         tvHint          = findViewById(R.id.tv_scan_hint);
         icTorch         = findViewById(R.id.ic_torch);
+        chipTorch       = findViewById(R.id.chip_torch);
+        lblTorch        = findViewById(R.id.lbl_torch);
         btnTorch        = findViewById(R.id.btn_torch);
         btnCancel       = findViewById(R.id.btn_cancel);
         awaitingOverlay = findViewById(R.id.awaiting_overlay);
@@ -299,7 +304,17 @@ public class ScanActivity extends AppCompatActivity {
             return;
         }
         boolean on = scanner.toggleTorch();
-        icTorch.setText(on ? "💡" : "🔦");
+        setTorchVisual(on);
+    }
+
+    /** 補光開／關的視覺：圖示座橘色高亮、圖示與標籤變色、標籤改「補光開」。 */
+    private void setTorchVisual(boolean on) {
+        chipTorch.setBackgroundResource(on ? R.drawable.bg_scan_chip_on : R.drawable.bg_scan_chip);
+        icTorch.setImageTintList(ColorStateList.valueOf(
+                ContextCompat.getColor(this, on ? R.color.scan_torch_on : R.color.scan_ico_dim)));
+        lblTorch.setText(on ? "補光開" : "補光");
+        lblTorch.setTextColor(ContextCompat.getColor(this,
+                on ? R.color.scan_torch_on : R.color.scan_label));
     }
 
     // 常駐進度：已盤（相符＋不符）/ 總數

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 圖示座（一般態）：圓角方形、深底、細框 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/scan_chip" />
+    <stroke android:width="1.5dp" android:color="@color/scan_chip_line" />
+    <corners android:radius="16dp" />
+</shape>

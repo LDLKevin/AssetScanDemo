@@ -1,0 +1,14 @@
+<!-- 補光（閃電），沿用原型圖示。以 strokeColor 白色描邊，實際顏色由 ImageView tint 控制。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="22dp"
+    android:height="22dp"
+    android:viewportWidth="22"
+    android:viewportHeight="22">
+    <path
+        android:pathData="M12 2L5 13h7l-2 7 9-11h-7l2-7z"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000" />
+</vector>

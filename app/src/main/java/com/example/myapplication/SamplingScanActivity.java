@@ -3,11 +3,13 @@ package com.example.myapplication;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.ColorStateList;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.DocumentsContract;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -51,8 +53,9 @@ public class SamplingScanActivity extends AppCompatActivity {
     private PreviewView previewView;
     private ScannerOverlayView scannerOverlay;
     private ScanResultCard resultCard;
-    private TextView tvTargetId, tvTargetName, tvTargetMeta, tvHint, icTorch;
-    private View btnTorch, btnCancel, awaitingOverlay;
+    private TextView tvTargetId, tvTargetName, tvTargetMeta, tvHint, lblTorch;
+    private ImageView icTorch;
+    private View btnTorch, btnCancel, awaitingOverlay, chipTorch;
 
     private String targetId;
     private String targetName;
@@ -98,6 +101,8 @@ public class SamplingScanActivity extends AppCompatActivity {
         tvTargetMeta    = findViewById(R.id.tv_target_meta);
         tvHint          = findViewById(R.id.tv_hint);
         icTorch         = findViewById(R.id.ic_torch);
+        chipTorch       = findViewById(R.id.chip_torch);
+        lblTorch        = findViewById(R.id.lbl_torch);
         btnTorch        = findViewById(R.id.btn_torch);
         btnCancel       = findViewById(R.id.btn_cancel);
         awaitingOverlay = findViewById(R.id.awaiting_overlay);
@@ -315,7 +320,17 @@ public class SamplingScanActivity extends AppCompatActivity {
             return;
         }
         boolean on = scanner.toggleTorch();
-        icTorch.setText(on ? "💡" : "🔦");
+        setTorchVisual(on);
+    }
+
+    /** 補光開／關的視覺：圖示座橘色高亮、圖示與標籤變色、標籤改「補光開」。 */
+    private void setTorchVisual(boolean on) {
+        chipTorch.setBackgroundResource(on ? R.drawable.bg_scan_chip_on : R.drawable.bg_scan_chip);
+        icTorch.setImageTintList(ColorStateList.valueOf(
+                ContextCompat.getColor(this, on ? R.color.scan_torch_on : R.color.scan_ico_dim)));
+        lblTorch.setText(on ? "補光開" : "補光");
+        lblTorch.setTextColor(ContextCompat.getColor(this,
+                on ? R.color.scan_torch_on : R.color.scan_label));
     }
 
     @Override
