@@ -139,14 +139,39 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         if (csvs.size() == 1) {
-            loadCsv(csvs.get(0).getUri());
+            confirmThenLoad(csvs.get(0).getUri());
             return;
         }
         String[] names = new String[csvs.size()];
         for (int i = 0; i < csvs.size(); i++) names[i] = csvs.get(i).getName();
         new AlertDialog.Builder(this)
                 .setTitle("選擇 CSV 檔")
-                .setItems(names, (d, which) -> loadCsv(csvs.get(which).getUri()))
+                .setItems(names, (d, which) -> confirmThenLoad(csvs.get(which).getUri()))
+                .show();
+    }
+
+    // 有進行中的盤點進度時，載入新清單前先警示（避免無聲覆蓋未匯出的進度）
+    private boolean hasProgress() {
+        if (assets == null) return false;
+        for (Asset a : assets) {
+            if (a.status != Asset.Status.UNCHECKED) return true;
+        }
+        return false;
+    }
+
+    private void confirmThenLoad(Uri uri) {
+        if (!hasProgress()) {
+            loadCsv(uri);
+            return;
+        }
+        long total   = assets.size();
+        long checked = assets.stream().filter(a -> a.status != Asset.Status.UNCHECKED).count();
+        new AlertDialog.Builder(this)
+                .setTitle("載入新清單")
+                .setMessage("目前已有進行中的盤點（已盤 " + checked + " / " + total
+                        + " 筆）。載入新清單會取代目前資料，未匯出的進度將不保留。確定載入？")
+                .setPositiveButton("載入新清單", (d, w) -> loadCsv(uri))
+                .setNegativeButton("繼續原作業", null)
                 .show();
     }
 
