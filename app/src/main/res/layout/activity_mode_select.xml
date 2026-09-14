@@ -48,7 +48,7 @@
         android:textSize="14sp"
         android:layout_marginBottom="24dp" />
 
-    <!-- 全盤卡：標題＋說明＋上次作業摘要（摘要就近綁在此模式卡上） -->
+    <!-- 全盤卡：標題＋說明 -->
     <LinearLayout
         android:id="@+id/btn_full"
         android:layout_width="match_parent"
@@ -77,41 +77,6 @@
             android:textColor="@color/text_on_primary_muted"
             android:textSize="13sp"
             android:layout_marginTop="3dp" />
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="@color/divider_on_primary"
-            android:layout_marginTop="16dp"
-            android:layout_marginBottom="12dp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="上次作業"
-            android:textColor="@color/text_on_primary_muted"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            android:letterSpacing="0.15" />
-
-        <TextView
-            android:id="@+id/tv_summary_main"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="3dp"
-            android:text="尚無資料"
-            android:textColor="@color/text_on_primary"
-            android:textSize="16sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/tv_summary_sub"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:text="請進入下方作業並載入 CSV"
-            android:textColor="@color/text_on_primary_muted"
-            android:textSize="13sp" />
 
     </LinearLayout>
 
