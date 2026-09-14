@@ -27,23 +27,27 @@
         android:paddingHorizontal="20dp"
         android:paddingVertical="16dp">
 
-        <!-- 品牌標識 -->
-        <TextView
+        <!-- 抽盤目標標記（脈動點＋標籤） -->
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="EVERGREEN"
-            android:textColor="@color/evergreen_accent"
-            android:textSize="10sp"
-            android:textStyle="bold"
-            android:letterSpacing="0.3" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="🔍 正在尋找"
-            android:textColor="#CCCCCC"
-            android:textSize="12sp"
-            android:layout_marginTop="2dp" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+            <View
+                android:id="@+id/target_pulse"
+                android:layout_width="7dp"
+                android:layout_height="7dp"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/circle_target_pulse" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="抽盤目標"
+                android:textColor="@color/evergreen_accent"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.15" />
+        </LinearLayout>
 
         <TextView
             android:id="@+id/tv_target_id"
@@ -53,7 +57,7 @@
             android:textSize="22sp"
             android:textStyle="bold"
             android:fontFamily="sans-serif-medium"
-            android:layout_marginTop="2dp" />
+            android:layout_marginTop="4dp" />
 
         <TextView
             android:id="@+id/tv_target_name"
@@ -61,74 +65,166 @@
             android:layout_height="wrap_content"
             android:textColor="#E0E0E0"
             android:textSize="14sp"
+            android:layout_marginTop="1dp" />
+
+        <TextView
+            android:id="@+id/tv_target_meta"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#AEBFB6"
+            android:textSize="13sp"
             android:layout_marginTop="2dp" />
     </LinearLayout>
 
-    <!-- 掃描提示（移到取景框下方，避免與掃描線重疊） -->
+    <!-- 掃描提示（取景框下方，隨情境變化） -->
     <TextView
         android:id="@+id/tv_hint"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|center_horizontal"
-        android:layout_marginBottom="96dp"
-        android:text="對準 QR Code"
+        android:layout_marginBottom="112dp"
+        android:text="對準指定財產 QR Code"
         android:textColor="@color/text_on_primary"
         android:textSize="13sp"
         android:background="@drawable/bg_hint_overlay"
         android:paddingHorizontal="14dp"
         android:paddingVertical="8dp" />
 
-    <!-- 手電筒按鈕 -->
-    <TextView
-        android:id="@+id/btn_torch"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_gravity="top|end"
-        android:layout_marginTop="120dp"
-        android:layout_marginEnd="16dp"
-        android:text="🔦"
-        android:textSize="22sp"
-        android:gravity="center"
-        android:background="@drawable/circle_overlay"
+    <!-- 待確認遮罩：不相符待使用者確認期間，暗化相機並提示掃描暫停（在結果卡之下，
+         讓卡片的確認／略過鈕仍可點） -->
+    <FrameLayout
+        android:id="@+id/awaiting_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/scan_await_scrim"
         android:clickable="true"
-        android:focusable="true" />
+        android:focusable="true"
+        android:visibility="gone">
 
-    <!-- QR 破損？拍照存證（存到 CSV 同資料夾） -->
-    <TextView
-        android:id="@+id/btn_capture"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|start"
-        android:layout_marginStart="20dp"
-        android:layout_marginBottom="96dp"
-        android:text="📷 拍照存證"
-        android:textColor="@color/text_on_primary"
-        android:textSize="13sp"
-        android:background="@drawable/bg_hint_overlay"
-        android:paddingHorizontal="14dp"
-        android:paddingVertical="8dp"
-        android:clickable="true"
-        android:focusable="true" />
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@drawable/bg_awaiting_pill"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="10dp">
+            <View
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/circle_awaiting_dot" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="等待確認中，掃描暫停"
+                android:textColor="@color/scan_flash_error"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </FrameLayout>
 
-    <!-- 掃描結果回饋卡（綠／橘／紅），浮在取消鍵上方 -->
+    <!-- 掃描結果回饋卡（綠／橘／紅），浮在底部操作列上方、遮罩之上 -->
     <com.example.myapplication.ui.ScanResultCard
         android:id="@+id/scan_result_card"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
         android:layout_marginHorizontal="16dp"
-        android:layout_marginBottom="96dp" />
+        android:layout_marginBottom="104dp" />
 
-    <!-- 底部取消按鈕 -->
-    <Button
-        android:id="@+id/btn_cancel"
+    <!-- ══ 底部操作列：補光 / 拍照存證 / 返回 ══════════════ -->
+    <LinearLayout
+        android:id="@+id/bottom_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        android:layout_margin="20dp"
-        android:text="取消"
-        android:textColor="@color/text_on_primary"
-        android:background="@drawable/btn_secondary" />
+        android:orientation="horizontal"
+        android:background="@color/scan_bar_bg"
+        android:paddingVertical="12dp"
+        android:paddingHorizontal="8dp">
+
+        <!-- 補光 -->
+        <LinearLayout
+            android:id="@+id/btn_torch"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="8dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackground">
+            <TextView
+                android:id="@+id/ic_torch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🔦"
+                android:textSize="22sp" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="補光"
+                android:textColor="@color/text_on_primary"
+                android:textSize="12sp"
+                android:layout_marginTop="4dp" />
+        </LinearLayout>
+
+        <!-- 拍照存證 -->
+        <LinearLayout
+            android:id="@+id/btn_capture"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="8dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackground">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="📷"
+                android:textSize="22sp" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="拍照存證"
+                android:textColor="@color/text_on_primary"
+                android:textSize="12sp"
+                android:layout_marginTop="4dp" />
+        </LinearLayout>
+
+        <!-- 返回 -->
+        <LinearLayout
+            android:id="@+id/btn_cancel"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="8dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackground">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="✕"
+                android:textColor="@color/text_on_primary"
+                android:textSize="22sp" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="返回"
+                android:textColor="@color/text_on_primary"
+                android:textSize="12sp"
+                android:layout_marginTop="4dp" />
+        </LinearLayout>
+    </LinearLayout>
 
     <!-- 相機權限被拒的引導畫面（覆蓋整頁，預設隱藏） -->
     <include

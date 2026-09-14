@@ -53,9 +53,13 @@ public class ScannerOverlayView extends View {
     private final float bracketLen;
     private final float lineInset;
 
+    private final int reticleColor;
     private final int scanLineColor;
     private final int flashSuccessColor;
     private final int flashErrorColor;
+
+    // 待確認狀態：四角轉紅、掃描線停（不相符待使用者確認期間）
+    private boolean awaitingConfirm = false;
 
     // 系統動畫是否開啟；一次工作階段內視為固定，於 window 可見時刷新，避免每次掃描都查 Settings。
     private boolean animationsEnabled;
@@ -85,7 +89,8 @@ public class ScannerOverlayView extends View {
         bracketPaint.setStrokeWidth(4f * density);
         bracketPaint.setStrokeCap(Paint.Cap.ROUND);   // 兩端圓頭
         bracketPaint.setStrokeJoin(Paint.Join.MITER); // 直角轉折（非圓角）
-        bracketPaint.setColor(ContextCompat.getColor(context, R.color.scan_reticle));
+        reticleColor = ContextCompat.getColor(context, R.color.scan_reticle);
+        bracketPaint.setColor(reticleColor);
 
         scanLineColor = ContextCompat.getColor(context, R.color.scan_line);
         linePaint.setStyle(Paint.Style.STROKE);
@@ -116,6 +121,19 @@ public class ScannerOverlayView extends View {
     /** 命中不符：取景框短暫閃紅。 */
     public void flashError() {
         startFlash(flashErrorColor);
+    }
+
+    /** 待確認狀態：四角轉紅、掃描線停；false 還原並重啟掃描線。 */
+    public void setAwaitingConfirm(boolean awaiting) {
+        if (awaitingConfirm == awaiting) return;
+        awaitingConfirm = awaiting;
+        bracketPaint.setColor(awaiting ? flashErrorColor : reticleColor);
+        if (awaiting) {
+            stopLineAnimation();
+        } else {
+            startLineAnimation();
+        }
+        invalidate();
     }
 
     // ── 生命週期與動畫 ───────────────────────────────────
@@ -160,6 +178,7 @@ public class ScannerOverlayView extends View {
     }
 
     private void startLineAnimation() {
+        if (awaitingConfirm) return;          // 待確認期間不跑掃描線
         if (lineAnimator != null) return;
         if (!animationsEnabled) {
             scanT = 0.5f;                  // 降級：靜態置中
@@ -214,7 +233,7 @@ public class ScannerOverlayView extends View {
 
         drawMask(canvas);
         canvas.drawPath(bracketPath, bracketPaint);
-        drawScanLine(canvas);
+        if (!awaitingConfirm) drawScanLine(canvas);   // 待確認時停線
         drawFlash(canvas);
     }
 

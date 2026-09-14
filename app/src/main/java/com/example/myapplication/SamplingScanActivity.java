@@ -8,7 +8,6 @@ import android.os.Bundle;
 import android.provider.DocumentsContract;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -52,8 +51,8 @@ public class SamplingScanActivity extends AppCompatActivity {
     private PreviewView previewView;
     private ScannerOverlayView scannerOverlay;
     private ScanResultCard resultCard;
-    private TextView tvTargetId, tvTargetName, tvHint, btnTorch;
-    private Button btnCancel;
+    private TextView tvTargetId, tvTargetName, tvTargetMeta, tvHint, icTorch;
+    private View btnTorch, btnCancel, awaitingOverlay;
 
     private String targetId;
     private String targetName;
@@ -91,41 +90,35 @@ public class SamplingScanActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_sampling_scan);
 
-        previewView    = findViewById(R.id.preview_view);
-        scannerOverlay = findViewById(R.id.scanner_overlay);
-        resultCard     = findViewById(R.id.scan_result_card);
-        tvTargetId     = findViewById(R.id.tv_target_id);
-        tvTargetName = findViewById(R.id.tv_target_name);
-        tvHint       = findViewById(R.id.tv_hint);
-        btnTorch     = findViewById(R.id.btn_torch);
-        btnCancel    = findViewById(R.id.btn_cancel);
+        previewView     = findViewById(R.id.preview_view);
+        scannerOverlay  = findViewById(R.id.scanner_overlay);
+        resultCard      = findViewById(R.id.scan_result_card);
+        tvTargetId      = findViewById(R.id.tv_target_id);
+        tvTargetName    = findViewById(R.id.tv_target_name);
+        tvTargetMeta    = findViewById(R.id.tv_target_meta);
+        tvHint          = findViewById(R.id.tv_hint);
+        icTorch         = findViewById(R.id.ic_torch);
+        btnTorch        = findViewById(R.id.btn_torch);
+        btnCancel       = findViewById(R.id.btn_cancel);
+        awaitingOverlay = findViewById(R.id.awaiting_overlay);
 
-        // 處理瀏海：頂部資訊條和底部取消按鈕往內推
+        // 處理瀏海：頂部資訊條下推、底部操作列上推
         ViewCompat.setOnApplyWindowInsetsListener(
                 findViewById(R.id.scan_root),
                 (view, insets) -> {
                     Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
 
-                    // 頂部資訊條加上瀏海高度
                     View topBar = findViewById(R.id.top_bar);
                     ViewGroup.MarginLayoutParams topParams =
                             (ViewGroup.MarginLayoutParams) topBar.getLayoutParams();
                     topParams.topMargin = bars.top;
                     topBar.setLayoutParams(topParams);
 
-                    // 底部取消按鈕加上導覽鍵高度
-                    View btnCancel = findViewById(R.id.btn_cancel);
-                    ViewGroup.MarginLayoutParams cancelParams =
-                            (ViewGroup.MarginLayoutParams) btnCancel.getLayoutParams();
-                    cancelParams.bottomMargin = bars.bottom + 24 * (int) getResources().getDisplayMetrics().density;
-                    btnCancel.setLayoutParams(cancelParams);
-
-                    // 手電筒按鈕也跟著頂部偏移
-                    View btnTorch = findViewById(R.id.btn_torch);
-                    ViewGroup.MarginLayoutParams torchParams =
-                            (ViewGroup.MarginLayoutParams) btnTorch.getLayoutParams();
-                    torchParams.topMargin = bars.top + 50 * (int) getResources().getDisplayMetrics().density;
-                    btnTorch.setLayoutParams(torchParams);
+                    View bottomBar = findViewById(R.id.bottom_bar);
+                    ViewGroup.MarginLayoutParams barParams =
+                            (ViewGroup.MarginLayoutParams) bottomBar.getLayoutParams();
+                    barParams.bottomMargin = bars.bottom;
+                    bottomBar.setLayoutParams(barParams);
 
                     return WindowInsetsCompat.CONSUMED;
                 }
@@ -142,6 +135,12 @@ public class SamplingScanActivity extends AppCompatActivity {
         }
         tvTargetId.setText(targetId);
         tvTargetName.setText(targetName != null ? targetName : "");
+
+        // 目標的部門·地點（供掃描員核對），從記憶體清單取
+        Asset target = findTarget();
+        if (target != null) {
+            tvTargetMeta.setText(safe(target.department) + " · " + safe(target.location));
+        }
 
         scanner = new QrScanner();
         feedback = new ScanFeedback(this);
@@ -238,9 +237,10 @@ public class SamplingScanActivity extends AppCompatActivity {
                 if (scannerOverlay != null) scannerOverlay.flashError();
                 feedback.unmatched();
                 if (target != null) {
+                    setAwaiting(true);
                     resultCard.showUnmatched("⚠️ 部門或地點不相符", tag, target,
-                            () -> returnRaw(raw),          // 確認寫入不相符 → 回傳落檔
-                            () -> finishing = false);      // 略過 → 恢復掃描
+                            () -> returnRaw(raw),                       // 確認寫入不相符 → 回傳落檔
+                            () -> { setAwaiting(false); finishing = false; });  // 略過 → 恢復掃描
                 } else {
                     // 找不到目標資產（理論上不會發生）：直接回傳，交由主畫面處理
                     returnRaw(raw);
@@ -255,6 +255,17 @@ public class SamplingScanActivity extends AppCompatActivity {
                 resultCard.showWarning("請掃描指定財產", "目前尋找：" + targetId);
             }
         }
+    }
+
+    /** 待確認狀態：暗遮罩＋取景框紅角停線＋提示改字（A4）。 */
+    private void setAwaiting(boolean awaiting) {
+        if (awaitingOverlay != null) {
+            awaitingOverlay.setVisibility(awaiting ? View.VISIBLE : View.GONE);
+        }
+        if (scannerOverlay != null) scannerOverlay.setAwaitingConfirm(awaiting);
+        tvHint.setText(awaiting ? "請先處理待確認項目" : "對準指定財產 QR Code");
+        tvHint.setTextColor(ContextCompat.getColor(this,
+                awaiting ? R.color.scan_flash_error : R.color.text_on_primary));
     }
 
     /** 從記憶體清單找出目前目標資產（取其部門／地點以判定相符）。 */
@@ -293,7 +304,7 @@ public class SamplingScanActivity extends AppCompatActivity {
             return;
         }
         boolean on = scanner.toggleTorch();
-        btnTorch.setText(on ? "💡" : "🔦");
+        icTorch.setText(on ? "💡" : "🔦");
     }
 
     @Override
