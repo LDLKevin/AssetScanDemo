@@ -67,9 +67,9 @@ public class AssetRepository {
         dirty = true;
     }
 
-    /** 盤盈寫入：標記為已盤點相符、蓋時間、加入清單、標記待落檔。 */
-    public void addAsMatched(Asset asset) {
-        asset.status    = Asset.Status.MATCHED;
+    /** 盤盈寫入：新增一筆盤點過的財產（指定狀態）、蓋時間、加入清單、標記待落檔。 */
+    public void addChecked(Asset asset, Asset.Status status) {
+        asset.status    = status;
         asset.checkedAt = now();
         if (assets != null) assets.add(asset);
         dirty = true;

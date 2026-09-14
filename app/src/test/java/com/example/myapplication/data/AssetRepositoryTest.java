@@ -57,17 +57,18 @@ public class AssetRepositoryTest {
     }
 
     @Test
-    public void addAsMatched_appendsAsMatchedAndDirty() {
+    public void addChecked_appendsWithStatusAndDirty() {
         AssetRepository repo = new AssetRepository();
         List<Asset> list = sampleList();
         repo.setAssets(list);
 
+        // 盤盈（清單外編號）新增，標記為不相符
         Asset surplus = new Asset("ZZZZ999", "冷氣機", "採購科", "四樓", Asset.Status.UNCHECKED, "");
-        repo.addAsMatched(surplus);
+        repo.addChecked(surplus, Asset.Status.UNMATCHED);
 
         assertEquals(2, list.size());
         assertSame(surplus, list.get(1));
-        assertEquals(Asset.Status.MATCHED, surplus.status);
+        assertEquals(Asset.Status.UNMATCHED, surplus.status);
         assertFalse(surplus.checkedAt.isEmpty());
         assertTrue(repo.isDirty());
     }

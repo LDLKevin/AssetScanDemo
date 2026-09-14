@@ -243,23 +243,23 @@ public class ScanActivity extends AppCompatActivity {
                 break;
             }
             case SURPLUS: {
-                // 盤盈（清單外編號）：確認卡提示，確認才新增為已盤點（取代舊表單流程）
+                // 盤盈（清單外編號）：確認卡提示，確認才新增並標記「不相符」（清單外屬差異）
                 if (scannerOverlay != null) scannerOverlay.flashError();
                 feedback.unmatched();
                 awaitingConfirm = true;
                 setAwaiting(true);
                 String detail = r.id + "　" + safe(r.name) + "\n"
                         + safe(r.department) + " · " + safe(r.location);
-                resultCard.showConfirm("⚠️ 此編號不在清單", detail, "確認新增（已盤點）",
+                resultCard.showConfirm("⚠️ 此編號不在清單", detail, "確認新增（不相符）",
                         R.color.status_warning_bg, R.color.status_warning,
-                        () -> {   // 確認新增
+                        () -> {   // 確認新增為不相符
                             Asset newAsset = new Asset(r.id, r.name, r.department, r.location,
                                     Asset.Status.UNCHECKED, "");
-                            AssetRepository.full().addAsMatched(newAsset);
+                            AssetRepository.full().addChecked(newAsset, Asset.Status.UNMATCHED);
                             setAwaiting(false);
                             awaitingConfirm = false;
                             updateProgressChip();
-                            Toast.makeText(this, "✅ 已新增：" + r.id, Toast.LENGTH_SHORT).show();
+                            Toast.makeText(this, "⚠️ 已新增（不相符）：" + r.id, Toast.LENGTH_SHORT).show();
                         },
                         () -> {   // 略過
                             setAwaiting(false);
