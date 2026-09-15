@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 全盤掃描頁：相機全螢幕、最少觸碰（方案 A）。舊的下半部表單已移除，
+     盤盈（清單外編號）改由結果卡確認新增。 -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/scan_root"
     android:layout_width="match_parent"
@@ -11,86 +13,41 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <!-- 取景框覆蓋層：暗遮罩＋四角括號＋掃描線＋命中閃色（與全盤共用） -->
+    <!-- 取景框覆蓋層：暗遮罩＋四角括號＋掃描線＋命中閃色（與抽盤共用） -->
     <com.eitc.assetscan.ui.ScannerOverlayView
         android:id="@+id/scanner_overlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <!-- 頂部資訊條：顯示要找的資產 -->
-    <LinearLayout
-        android:id="@+id/top_bar"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:background="#CC000000"
-        android:paddingHorizontal="20dp"
-        android:paddingVertical="16dp">
-
-        <!-- 抽盤目標標記（脈動點＋標籤） -->
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-            <View
-                android:id="@+id/target_pulse"
-                android:layout_width="7dp"
-                android:layout_height="7dp"
-                android:layout_marginEnd="6dp"
-                android:background="@drawable/circle_target_pulse" />
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="抽盤目標"
-                android:textColor="@color/evergreen_accent"
-                android:textSize="11sp"
-                android:textStyle="bold"
-                android:letterSpacing="0.15" />
-        </LinearLayout>
-
-        <TextView
-            android:id="@+id/tv_target_id"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textColor="@color/text_on_primary"
-            android:textSize="22sp"
-            android:textStyle="bold"
-            android:fontFamily="sans-serif-medium"
-            android:layout_marginTop="4dp" />
-
-        <TextView
-            android:id="@+id/tv_target_name"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textColor="#E0E0E0"
-            android:textSize="14sp"
-            android:layout_marginTop="1dp" />
-
-        <TextView
-            android:id="@+id/tv_target_meta"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textColor="#AEBFB6"
-            android:textSize="13sp"
-            android:layout_marginTop="2dp" />
-    </LinearLayout>
-
-    <!-- 掃描提示（貼著取景框下緣，位置由 SamplingScanActivity 依實際框位置動態設定） -->
+    <!-- 常駐進度 Chip：已盤 N / M -->
     <TextView
-        android:id="@+id/tv_hint"
+        android:id="@+id/tv_progress_chip"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|start"
+        android:layout_margin="12dp"
+        android:text="已盤 0 / 0"
+        android:textColor="@color/text_on_primary"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:background="@drawable/bg_hint_overlay"
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="8dp" />
+
+    <!-- 掃描提示（貼著取景框下緣，位置由 FullScanActivity 依實際框位置動態設定） -->
+    <TextView
+        android:id="@+id/tv_scan_hint"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="top|center_horizontal"
-        android:text="對準指定財產 QR Code"
+        android:text="對準 QR Code 自動掃描"
         android:textColor="@color/text_on_primary"
         android:textSize="13sp"
         android:background="@drawable/bg_hint_overlay"
         android:paddingHorizontal="14dp"
         android:paddingVertical="8dp" />
 
-    <!-- 待確認遮罩：不相符待使用者確認期間，暗化相機並提示掃描暫停（在結果卡之下，
-         讓卡片的確認／略過鈕仍可點） -->
+    <!-- 待確認遮罩：不相符／盤盈待確認期間，暗化相機並提示掃描暫停（在結果卡之下） -->
     <FrameLayout
         android:id="@+id/awaiting_overlay"
         android:layout_width="match_parent"

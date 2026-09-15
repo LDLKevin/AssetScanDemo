@@ -2,8 +2,17 @@ plugins {
     alias(libs.plugins.android.application)
 }
 
+// 正式發布簽章：憑證與密碼放在專案外 + keystore.properties（已 gitignore），
+// 這個檔案不存在時（例如 CI 或別人的機器）release build 就不簽章，不會讓建置失敗。
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystoreProperties = new Properties()
+def hasReleaseSigning = keystorePropertiesFile.exists()
+if (hasReleaseSigning) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
-    namespace 'com.example.myapplication'
+    namespace 'com.eitc.assetscan'
     compileSdk {
         version = release(36) {
             minorApiLevel = 1
@@ -11,7 +20,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.example.myapplication"
+        applicationId "com.eitc.assetscan"
         minSdk 24
         targetSdk 36
         versionCode 1
@@ -20,10 +29,24 @@ android {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        release {
+            if (hasReleaseSigning) {
+                storeFile file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
         }
     }
     compileOptions {

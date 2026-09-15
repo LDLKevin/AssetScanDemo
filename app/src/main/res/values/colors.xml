@@ -38,7 +38,7 @@
     <!-- 掃描取景框覆蓋層 -->
     <color name="scan_mask">#99000000</color>       <!-- 框外半透明暗遮罩 -->
     <color name="scan_reticle">#FFFFFF</color>       <!-- 四角括號 -->
-    <color name="scan_line">#F5A623</color>          <!-- 掃描線（金黃，呼應輔色） -->
+    <color name="scan_line">#FFFFFF</color>          <!-- 掃描線（金黃，呼應輔色） -->
     <color name="scan_flash_success">#2EC26B</color> <!-- 命中相符：亮綠閃色（相機上需比 status_success 更醒目） -->
     <color name="scan_flash_error">#E5484D</color>   <!-- 命中不符：亮紅閃色 -->
     <color name="scan_await_scrim">#B3000000</color> <!-- 待確認時的暗遮罩 -->

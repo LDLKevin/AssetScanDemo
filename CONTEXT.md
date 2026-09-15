@@ -4,7 +4,7 @@
 
 ## 流程（Flow）
 
-- **全盤（Full scan）** — `ScanActivity`。相機連續開著，掃到什麼判定什麼，掃過的財產進 history 可回看。
+- **全盤（Full scan）** — `FullActivity` + `FullScanActivity`。相機連續開著，掃到什麼判定什麼，掃過的財產進 history 可回看。
 - **抽盤（Sampling）** — `SamplingActivity` + `SamplingScanActivity`。逐筆鎖定一個目標資產，掃描頁只接受該目標。
 
 ## 掃描判定（Scan outcome）
@@ -30,4 +30,4 @@
 
 ## 政策放哪（Policy locality）
 
-冷卻（cooldown）與去重（de-dup）是**各掃描頁的政策**，留在 Activity（`ScanActivity` 有 900ms 冷卻＋同一 raw 去重；`SamplingScanActivity` 只對非目標 Toast 節流），不進 `QrScanner`。
+冷卻（cooldown）與去重（de-dup）是**各掃描頁的政策**，留在 Activity（`FullScanActivity` 有 900ms 冷卻＋同一 raw 去重；`SamplingScanActivity` 只對非目標 Toast 節流），不進 `QrScanner`。

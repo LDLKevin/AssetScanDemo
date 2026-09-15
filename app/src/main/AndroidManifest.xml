@@ -11,7 +11,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.MyApplication">
+        android:theme="@style/Theme.AssetScanDemo">
         <!-- 啟動 Activity -->
         <activity
             android:name=".ModeSelectActivity"
@@ -21,10 +21,11 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity> <!-- 全盤主畫面（移除 LAUNCHER intent-filter） -->
-        <activity android:name=".MainActivity" /> <!-- 全盤掃描 -->
+        </activity>
+        <!-- 全盤主畫面（移除 LAUNCHER intent-filter） -->
+        <activity android:name=".FullActivity" />
         <activity
-            android:name=".ScanActivity"
+            android:name=".FullScanActivity"
             android:screenOrientation="portrait" />
         <activity
             android:name=".SamplingActivity"
