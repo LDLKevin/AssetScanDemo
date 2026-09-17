@@ -21,30 +21,35 @@ import com.eitc.assetscan.logic.ScannedTag;
 import com.eitc.assetscan.model.Asset;
 
 /**
- * 掃描結果回饋卡（可重用）：綠（相符）／橘（重複）／紅（不相符）三態，取代 Toast。
+ * 掃描結果回饋卡（可重用）：綠（相符）／橘（重複、警告）／紅（不相符）／琥珀（盤盈待確認）四態。
+ *
+ * <p>統一規則：所有卡片持續顯示，直到下一筆格式正確的財產被掃描到（由呼叫端在下一次掃描時
+ * 換一張新卡取代），不再用計時器自動消散；右上角一律提供關閉（✕）。
  *
  * <ul>
- *   <li>{@link #showSuccess} 相符：綠卡，1.5 秒自動消散。</li>
- *   <li>{@link #showDuplicate} 重複掃描：橘卡，自動消散、不覆蓋原記錄。</li>
- *   <li>{@link #showUnmatched} 不相符：紅卡，列出「掃到 vs 清單」差異對比，
- *       需按「確認寫入不相符」才落檔（不自動消散）。</li>
+ *   <li>{@link #showSuccess} 相符：綠卡，已即時寫入，✕ 純粹關畫面。</li>
+ *   <li>{@link #showDuplicate} / {@link #showWarning} 重複、一般提示：橘卡，✕ 純粹關畫面。</li>
+ *   <li>{@link #showUnmatchedWritten} 不相符（部門）：紅卡，已即時寫入，列出「掃到 vs 清單」
+ *       的部門差異，✕ 純粹關畫面。</li>
+ *   <li>{@link #showConfirm} 盤盈（清單外編號）：琥珀卡，需按「確認寫入不相符」才落檔；
+ *       四態中唯一會暫停相機的一種，✕ 等同「略過」（放棄寫入、解除暫停）。</li>
  * </ul>
  *
- * 全盤掃描頁使用；抽盤掃描頁（#10）可沿用同一元件。
+ * 全盤掃描頁使用；抽盤掃描頁沿用同一元件。
  */
 public class ScanResultCard extends FrameLayout {
 
-    private static final long AUTO_DISMISS_MS = 1500L;
     private static final long ENTER_MS = 190L;
 
     private final LinearLayout cardBody;
     private final TextView title;
     private final TextView message;
     private final LinearLayout diffContainer;
+    private final TextView badge;
+    private final LinearLayout actionsRow;
     private final Button btnConfirm;
     private final Button btnDismiss;
-
-    private final Runnable autoHide = this::hide;
+    private final TextView btnClose;
 
     public ScanResultCard(Context context) {
         this(context, null);
@@ -57,73 +62,63 @@ public class ScanResultCard extends FrameLayout {
         title         = findViewById(R.id.result_title);
         message       = findViewById(R.id.result_message);
         diffContainer = findViewById(R.id.result_diff);
+        badge         = findViewById(R.id.result_badge);
+        actionsRow    = findViewById(R.id.result_actions);
         btnConfirm    = findViewById(R.id.result_confirm);
         btnDismiss    = findViewById(R.id.result_dismiss);
+        btnClose      = findViewById(R.id.result_close);
         setVisibility(GONE);
     }
 
-    // ── 三種結果 ────────────────────────────────────────
+    // ── 四種結果 ────────────────────────────────────────
 
-    /** 相符：綠卡，自動消散。 */
+    /** 相符：綠卡，已即時寫入，不阻塞。 */
     public void showSuccess(String heading, String detail) {
-        style(R.color.status_success_bg, R.color.status_success);
-        title.setText(heading);
-        setMessage(detail);
-        diffContainer.setVisibility(GONE);
-        btnConfirm.setVisibility(GONE);
-        btnDismiss.setVisibility(GONE);
-        showAutoDismiss();
+        showAmbient(R.color.status_success_bg, R.color.status_success, heading, detail,
+                "已寫入・相符");
     }
 
-    /** 重複掃描：橘卡，自動消散，不覆蓋。 */
+    /** 重複掃描：橘卡，不落檔、不覆蓋原記錄，不阻塞。 */
     public void showDuplicate(String heading, String detail) {
-        showWarning(heading, detail);
+        showAmbient(R.color.status_warning_bg, R.color.status_warning, heading, detail,
+                "不覆蓋原記錄");
     }
 
-    /** 一般橘色提示（自動消散），如抽盤「請掃描指定財產」。 */
+    /** 一般橘色提示（不阻塞），如抽盤「請掃描指定財產」。 */
     public void showWarning(String heading, String detail) {
-        style(R.color.status_warning_bg, R.color.status_warning);
+        showAmbient(R.color.status_warning_bg, R.color.status_warning, heading, detail, null);
+    }
+
+    private void showAmbient(int bgColorRes, int fgColorRes, String heading, String detail,
+                             String badgeText) {
+        style(bgColorRes, fgColorRes);
         title.setText(heading);
         setMessage(detail);
         diffContainer.setVisibility(GONE);
-        btnConfirm.setVisibility(GONE);
-        btnDismiss.setVisibility(GONE);
-        showAutoDismiss();
-    }
-
-    /**
-     * 不相符：紅卡，含差異對比，需確認才寫入（不自動消散）。
-     * 提供「略過（不寫入）」讓使用者明確放棄，避免直接掃下一張時靜默丟失這筆。
-     */
-    public void showUnmatched(String heading, ScannedTag scanned, Asset listed,
-                              Runnable onConfirm, Runnable onDismiss) {
-        style(R.color.status_error_bg, R.color.status_error);
-        title.setText(heading);
-        setMessage(listed.id + "　" + listed.name);
-        buildDiff(scanned, listed);
-
-        btnConfirm.setText("確認寫入不相符");
-        btnConfirm.setBackgroundTintList(
-                ColorStateList.valueOf(ContextCompat.getColor(getContext(), R.color.status_error)));
-        btnConfirm.setVisibility(VISIBLE);
-        btnConfirm.setOnClickListener(v -> {
-            if (onConfirm != null) onConfirm.run();
-            hide();
-        });
-
-        btnDismiss.setVisibility(VISIBLE);
-        btnDismiss.setOnClickListener(v -> {
-            if (onDismiss != null) onDismiss.run();
-            hide();
-        });
-
-        removeCallbacks(autoHide);       // 不相符需使用者確認，不自動消散
+        setBadge(badgeText, fgColorRes);
+        actionsRow.setVisibility(GONE);
+        btnClose.setOnClickListener(v -> hide());
         reveal();
     }
 
     /**
-     * 一般確認卡（不含差異對比）：如全盤「盤盈（清單外編號）」需確認新增。
-     * 不自動消散，提供確認與「略過」。
+     * 不相符（部門比對失敗）：紅卡，掃到當下已自動落檔，列出「掃到 vs 清單」的部門差異。
+     * 不阻塞相機，✕ 純粹關畫面（與是否已寫入無關）。
+     */
+    public void showUnmatchedWritten(String heading, ScannedTag scanned, Asset listed) {
+        style(R.color.status_error_bg, R.color.status_error);
+        title.setText(heading);
+        setMessage(listed.id + "　" + listed.name);
+        buildDepartmentDiff(scanned, listed);
+        setBadge("已自動寫入不相符", R.color.status_error);
+        actionsRow.setVisibility(GONE);
+        btnClose.setOnClickListener(v -> hide());
+        reveal();
+    }
+
+    /**
+     * 盤盈（清單外編號）：琥珀卡，尚未寫入，需按「確認寫入不相符」才落檔。
+     * 四態中唯一會阻塞相機的一種；✕ 等同「略過」，放棄寫入並解除阻塞。
      */
     public void showConfirm(String heading, String detail, String confirmLabel,
                             int bgColorRes, int fgColorRes,
@@ -132,32 +127,35 @@ public class ScanResultCard extends FrameLayout {
         title.setText(heading);
         setMessage(detail);
         diffContainer.setVisibility(GONE);
+        setBadge("尚未寫入・待確認", fgColorRes);
 
         btnConfirm.setText(confirmLabel);
         btnConfirm.setBackgroundTintList(
                 ColorStateList.valueOf(ContextCompat.getColor(getContext(), fgColorRes)));
-        btnConfirm.setVisibility(VISIBLE);
         btnConfirm.setOnClickListener(v -> {
             if (onConfirm != null) onConfirm.run();
             hide();
         });
 
-        btnDismiss.setVisibility(VISIBLE);
         btnDismiss.setOnClickListener(v -> {
             if (onDismiss != null) onDismiss.run();
             hide();
         });
+        actionsRow.setVisibility(VISIBLE);
 
-        removeCallbacks(autoHide);
+        // 此卡會阻塞相機：✕ 不能只是關畫面，等同「略過」明確解除阻塞。
+        btnClose.setOnClickListener(v -> {
+            if (onDismiss != null) onDismiss.run();
+            hide();
+        });
+
         reveal();
     }
 
     public void hide() {
         animate().cancel();
-        removeCallbacks(autoHide);
         setAlpha(1f);
         setTranslationY(0f);
-        btnDismiss.setVisibility(GONE);
         setVisibility(GONE);
     }
 
@@ -166,12 +164,6 @@ public class ScanResultCard extends FrameLayout {
     }
 
     // ── 內部 ────────────────────────────────────────────
-
-    private void showAutoDismiss() {
-        removeCallbacks(autoHide);
-        reveal();
-        postDelayed(autoHide, AUTO_DISMISS_MS);
-    }
 
     /** 由下方滑入＋淡入；系統關閉動畫時直接顯示。 */
     private void reveal() {
@@ -205,6 +197,16 @@ public class ScanResultCard extends FrameLayout {
         }
     }
 
+    private void setBadge(String text, int fgColorRes) {
+        if (text == null) {
+            badge.setVisibility(GONE);
+            return;
+        }
+        badge.setVisibility(VISIBLE);
+        badge.setText(text);
+        badge.setTextColor(ContextCompat.getColor(getContext(), fgColorRes));
+    }
+
     private void style(int bgColorRes, int fgColorRes) {
         cardBody.setBackgroundTintList(
                 ColorStateList.valueOf(ContextCompat.getColor(getContext(), bgColorRes)));
@@ -213,11 +215,10 @@ public class ScanResultCard extends FrameLayout {
         message.setTextColor(ContextCompat.getColor(getContext(), R.color.text_secondary));
     }
 
-    /** 逐列列出「掃到 vs 清單」，不一致的欄位以紅字標示。 */
-    private void buildDiff(ScannedTag scanned, Asset listed) {
+    /** 掃到 vs 清單的歸屬部門對比（唯一參與比對的欄位）；不一致以紅字標示。 */
+    private void buildDepartmentDiff(ScannedTag scanned, Asset listed) {
         diffContainer.removeAllViews();
         addDiffRow("部門", scanned.department, listed.department);
-        addDiffRow("地點", scanned.location, listed.location);
         diffContainer.setVisibility(VISIBLE);
     }
 
@@ -248,7 +249,6 @@ public class ScanResultCard extends FrameLayout {
     @Override
     protected void onDetachedFromWindow() {
         animate().cancel();
-        removeCallbacks(autoHide);
         super.onDetachedFromWindow();
     }
 }

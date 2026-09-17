@@ -6,26 +6,24 @@ import org.junit.Test;
 
 /**
  * QR 字串解析純邏輯測試（JVM，不需相機／裝置）。
- * 格式 {@code id;name;department;location}；缺欄位補空字串、前後空白去除。
+ * 格式 {@code id;name;department}；缺欄位補空字串、前後空白去除。
  */
 public class ScannedTagTest {
 
     @Test
-    public void parsesFourFields() {
-        ScannedTag tag = ScannedTag.parse("ASSET001;辦公桌;財務部;一樓");
+    public void parsesThreeFields() {
+        ScannedTag tag = ScannedTag.parse("ASSET001;辦公桌;財務部");
         assertEquals("ASSET001", tag.id);
         assertEquals("辦公桌", tag.name);
         assertEquals("財務部", tag.department);
-        assertEquals("一樓", tag.location);
     }
 
     @Test
     public void trimsWhitespace() {
-        ScannedTag tag = ScannedTag.parse("  ASSET001 ; 辦公桌 ; 財務部 ; 一樓 ");
+        ScannedTag tag = ScannedTag.parse("  ASSET001 ; 辦公桌 ; 財務部 ");
         assertEquals("ASSET001", tag.id);
         assertEquals("辦公桌", tag.name);
         assertEquals("財務部", tag.department);
-        assertEquals("一樓", tag.location);
     }
 
     @Test
@@ -34,7 +32,6 @@ public class ScannedTagTest {
         assertEquals("ASSET001", tag.id);
         assertEquals("辦公桌", tag.name);
         assertEquals("", tag.department);
-        assertEquals("", tag.location);
     }
 
     @Test
@@ -43,7 +40,6 @@ public class ScannedTagTest {
         assertEquals("ASSET001", tag.id);
         assertEquals("", tag.name);
         assertEquals("", tag.department);
-        assertEquals("", tag.location);
     }
 
     @Test
@@ -52,7 +48,6 @@ public class ScannedTagTest {
         assertEquals("", tag.id);
         assertEquals("", tag.name);
         assertEquals("", tag.department);
-        assertEquals("", tag.location);
     }
 
     @Test
@@ -61,15 +56,13 @@ public class ScannedTagTest {
         assertEquals("", tag.id);
         assertEquals("", tag.name);
         assertEquals("", tag.department);
-        assertEquals("", tag.location);
     }
 
     @Test
-    public void extraFields_ignoredBeyondLocation() {
-        ScannedTag tag = ScannedTag.parse("ASSET001;辦公桌;財務部;一樓;多餘;欄位");
+    public void extraFields_ignoredBeyondDepartment() {
+        ScannedTag tag = ScannedTag.parse("ASSET001;辦公桌;財務部;一樓;多餘");
         assertEquals("ASSET001", tag.id);
         assertEquals("辦公桌", tag.name);
         assertEquals("財務部", tag.department);
-        assertEquals("一樓", tag.location);
     }
 }

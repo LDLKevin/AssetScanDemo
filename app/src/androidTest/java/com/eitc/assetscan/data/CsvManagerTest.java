@@ -2,6 +2,8 @@ package com.eitc.assetscan.data;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import android.content.ContentResolver;
 import android.content.Context;
@@ -17,21 +19,21 @@ import org.junit.runner.RunWith;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * CsvManager 讀寫往返測試（需在裝置／模擬器上跑）。
- * Big5 是 Android 平台行為（無真正 CP950，MS950 canonical 成基礎 Big5），JVM 測不準，故用 instrumented。
- * 建議至少涵蓋 minSdk。
  */
 @RunWith(AndroidJUnit4.class)
 public class CsvManagerTest {
 
     @Test
-    public void roundTrip_preservesChineseAndStatus_withoutBom() throws Exception {
+    public void roundTrip_preservesChineseAndStatus_asUtf8WithoutBom() throws Exception {
         Context ctx = InstrumentationRegistry.getInstrumentation().getTargetContext();
         ContentResolver resolver = ctx.getContentResolver();
 
@@ -50,13 +52,13 @@ public class CsvManagerTest {
 
         CsvManager.write(resolver, uri, original);
 
-        // (1) 不得有 UTF-8 BOM
+        // (1) 不得有 UTF-8 BOM（下游用程式讀取，不需要 BOM）
         byte[] bytes = readAll(file);
         boolean hasBom = bytes.length >= 3
                 && (bytes[0] & 0xFF) == 0xEF
                 && (bytes[1] & 0xFF) == 0xBB
                 && (bytes[2] & 0xFF) == 0xBF;
-        assertFalse("Big5 檔不應含 BOM", hasBom);
+        assertFalse("UTF-8 輸出不應含 BOM", hasBom);
 
         // (2) 往返一致：中文、狀態（V/X/空）、時間皆保留
         List<Asset> readBack = CsvManager.read(resolver, uri);
@@ -72,11 +74,34 @@ public class CsvManagerTest {
             assertEquals(a.checkedAt, b.checkedAt);
         }
 
-        // (3) 反向鎖：以 UTF-8 解讀這份 Big5 位元組，中文串不應原樣出現
-        //     （若哪天編碼被改回預設 UTF-8，這條會失敗）
+        // (3) 正向鎖：位元組本身就是合法 UTF-8，直接解碼可得原中文
+        //     （若哪天編碼被改回 Big5/MS950，這條會失敗）
         String asUtf8 = new String(bytes, StandardCharsets.UTF_8);
-        assertFalse("以 UTF-8 解讀 Big5 位元組不應得到原中文",
-                asUtf8.contains("43人座大型巴士"));
+        assertTrue("以 UTF-8 解讀應得到原中文", asUtf8.contains("43人座大型巴士"));
+    }
+
+    @Test
+    public void read_throwsClearError_whenFileIsNotUtf8() throws Exception {
+        Context ctx = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        ContentResolver resolver = ctx.getContentResolver();
+
+        File file = new File(ctx.getCacheDir(), "csvmanager_non_utf8_test.csv");
+        if (file.exists()) //noinspection ResultOfMethodCallIgnored
+            file.delete();
+
+        // 用 Big5 寫一份誤放進來的舊檔：中文多位元組序列在 UTF-8 下大多不合法。
+        String line = "F010701V37,43人座大型巴士,財務部,一樓機房,V,2026-08-20 10:00:00\n";
+        byte[] big5Bytes = line.getBytes(Charset.forName("Big5"));
+        try (FileOutputStream fos = new FileOutputStream(file)) {
+            fos.write(big5Bytes);
+        }
+
+        try {
+            CsvManager.read(resolver, Uri.fromFile(file));
+            fail("非 UTF-8 檔案應該要拋出例外，而不是靜默解出亂碼");
+        } catch (Exception expected) {
+            // 預期行為：明確失敗，訊息可辨識為編碼問題
+        }
     }
 
     private static byte[] readAll(File file) throws Exception {

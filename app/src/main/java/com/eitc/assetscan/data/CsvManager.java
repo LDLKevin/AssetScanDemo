@@ -11,28 +11,48 @@ import com.opencsv.CSVWriter;
 import org.apache.commons.io.input.BOMInputStream;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.io.StringReader;
+import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CodingErrorAction;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
 public class CsvManager {
 
-    // ERP 報表匯出為 MS950；Android 無真正 CP950 codec，MS950/windows-950 都會 canonical
-    // 成基礎 Big5，故直接指定 Big5 讀寫。Big5 家族無 BOM，寫檔不得加 BOM，否則 ERP 再匯入會出錯。
-    private static final Charset BIG5 = Charset.forName("Big5");
+    // 讀寫全面統一 UTF-8（上下游已協調一致）；寫檔不加 BOM，供其他程式直接讀取。
+    private static final Charset UTF8 = StandardCharsets.UTF_8;
 
     // 讀取：透過 Uri（系統檔案選擇器）
     public static List<Asset> read(ContentResolver resolver, Uri uri) throws Exception {
         List<Asset> list = new ArrayList<>();
 
+        byte[] raw;
         try (InputStream is = resolver.openInputStream(uri);
-             BOMInputStream bomIs = BOMInputStream.builder().setInputStream(is).get();
-             CSVReader reader = new CSVReader(new InputStreamReader(bomIs, BIG5))) {
+             BOMInputStream bomIs = BOMInputStream.builder().setInputStream(is).get()) {
+            raw = readAllBytes(bomIs);
+        }
 
+        // 先把整份內容嚴格解成 UTF-8：遇到不合法的位元組直接失敗並給出明確訊息，
+        // 不讓非 UTF-8 檔案被硬解成亂碼後還被當成正常資料處理掉。
+        String content;
+        try {
+            CharsetDecoder decoder = UTF8.newDecoder()
+                    .onMalformedInput(CodingErrorAction.REPORT)
+                    .onUnmappableCharacter(CodingErrorAction.REPORT);
+            content = decoder.decode(ByteBuffer.wrap(raw)).toString();
+        } catch (CharacterCodingException e) {
+            throw new IOException("檔案編碼不是 UTF-8，請確認匯出設定為 UTF-8 後再試一次", e);
+        }
+
+        try (CSVReader reader = new CSVReader(new StringReader(content))) {
             String[] row;
             while ((row = reader.readNext()) != null) {
                 if (row.length < 4) continue;
@@ -59,11 +79,19 @@ public class CsvManager {
         return list;
     }
 
+    private static byte[] readAllBytes(InputStream is) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        byte[] buf = new byte[8192];
+        int n;
+        while ((n = is.read(buf)) != -1) out.write(buf, 0, n);
+        return out.toByteArray();
+    }
+
     public static void write(ContentResolver resolver, Uri uri, List<Asset> assets) throws Exception {
-        // 序列化先於落檔：先在記憶體用 Big5 把整份 CSV 產生完成，確認無誤後才單次寫入目的檔，
+        // 序列化先於落檔：先在記憶體用 UTF-8 把整份 CSV 產生完成，確認無誤後才單次寫入目的檔，
         // 避免序列化中途出錯留下半份損毀的既有檔案。
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-        try (CSVWriter writer = new CSVWriter(new OutputStreamWriter(buffer, BIG5))) {
+        try (CSVWriter writer = new CSVWriter(new OutputStreamWriter(buffer, UTF8))) {
             for (Asset a : assets) {
                 String s;
                 switch (a.status) {

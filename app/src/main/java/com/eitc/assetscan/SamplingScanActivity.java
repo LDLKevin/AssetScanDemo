@@ -58,7 +58,7 @@ public class SamplingScanActivity extends AppCompatActivity {
     private ScanResultCard resultCard;
     private TextView tvTargetId, tvTargetName, tvTargetMeta, tvHint, lblTorch;
     private ImageView icTorch;
-    private View btnTorch, btnCancel, awaitingOverlay, chipTorch;
+    private View btnTorch, btnCancel, chipTorch;
 
     private String targetId;
     private String targetName;
@@ -108,7 +108,6 @@ public class SamplingScanActivity extends AppCompatActivity {
         lblTorch        = findViewById(R.id.lbl_torch);
         btnTorch        = findViewById(R.id.btn_torch);
         btnCancel       = findViewById(R.id.btn_cancel);
-        awaitingOverlay = findViewById(R.id.awaiting_overlay);
 
         // 掃描提示貼著取景框下緣：取景框位置一變（含第一次量測）就跟著重新定位
         float hintGapPx = HINT_GAP_DP * getResources().getDisplayMetrics().density;
@@ -241,26 +240,21 @@ public class SamplingScanActivity extends AppCompatActivity {
             boolean matched = target != null && ScanClassifier.matches(target, tag);
 
             if (matched) {
-                // ✅ 相符：綠卡自動消散，短暫停留後回傳（由抽盤主畫面落檔）
+                // ✅ 相符：綠卡短暫停留後回傳（由抽盤主畫面落檔）
                 finishing = true;
                 if (scannerOverlay != null) scannerOverlay.flashSuccess();
                 feedback.success();
                 resultCard.showSuccess("✅ 相符", targetId + "　" + safe(targetName));
                 returnRawDelayed(raw, 1200L);
             } else {
-                // ⚠️ 目標不符（部門／地點）：紅卡列差異對比，確認才回傳落檔
+                // ⚠️ 目標不符（部門）：不需確認，立即回傳落檔；紅卡列部門差異，短暫停留後關閉。
                 finishing = true;
                 if (scannerOverlay != null) scannerOverlay.flashError();
                 feedback.unmatched();
                 if (target != null) {
-                    setAwaiting(true);
-                    resultCard.showUnmatched("⚠️ 部門或地點不相符", tag, target,
-                            () -> returnRaw(raw),                       // 確認寫入不相符 → 回傳落檔
-                            () -> { setAwaiting(false); finishing = false; });  // 略過 → 恢復掃描
-                } else {
-                    // 找不到目標資產（理論上不會發生）：直接回傳，交由主畫面處理
-                    returnRaw(raw);
+                    resultCard.showUnmatchedWritten("⚠️ 不相符（部門）", tag, target);
                 }
+                returnRawDelayed(raw, 1200L);
             }
         } else if (AssetIdFormat.isValid(scannedId)) {
             // 掃到別的（成格式的）資產：橘卡提示、不寫入、繼續掃；不成格式的雜訊靜默忽略
@@ -273,18 +267,7 @@ public class SamplingScanActivity extends AppCompatActivity {
         }
     }
 
-    /** 待確認狀態：暗遮罩＋取景框紅角停線＋提示改字（A4）。 */
-    private void setAwaiting(boolean awaiting) {
-        if (awaitingOverlay != null) {
-            awaitingOverlay.setVisibility(awaiting ? View.VISIBLE : View.GONE);
-        }
-        if (scannerOverlay != null) scannerOverlay.setAwaitingConfirm(awaiting);
-        tvHint.setText(awaiting ? "請先處理待確認項目" : "對準指定財產 QR Code");
-        tvHint.setTextColor(ContextCompat.getColor(this,
-                awaiting ? R.color.scan_flash_error : R.color.text_on_primary));
-    }
-
-    /** 從記憶體清單找出目前目標資產（取其部門／地點以判定相符）。 */
+    /** 從記憶體清單找出目前目標資產（取其部門以判定相符）。 */
     private Asset findTarget() {
         List<Asset> list = AssetRepository.sampling().getAssets();
         if (list != null) {
@@ -340,7 +323,6 @@ public class SamplingScanActivity extends AppCompatActivity {
         chipTorch.setBackgroundResource(on ? R.drawable.bg_scan_chip_on : R.drawable.bg_scan_chip);
         icTorch.setImageTintList(ColorStateList.valueOf(
                 ContextCompat.getColor(this, on ? R.color.scan_torch_on : R.color.scan_ico_dim)));
-        lblTorch.setText(on ? "補光開" : "補光");
         lblTorch.setTextColor(ContextCompat.getColor(this,
                 on ? R.color.scan_torch_on : R.color.scan_label));
     }

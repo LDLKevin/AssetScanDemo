@@ -10,12 +10,34 @@
     android:elevation="6dp"
     android:padding="18dp">
 
-    <TextView
-        android:id="@+id/result_title"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textSize="16sp"
-        android:textStyle="bold" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/result_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/result_close"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_marginStart="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true"
+            android:contentDescription="關閉"
+            android:gravity="center"
+            android:text="✕"
+            android:textSize="14sp" />
+
+    </LinearLayout>
 
     <TextView
         android:id="@+id/result_message"
@@ -24,7 +46,7 @@
         android:layout_marginTop="4dp"
         android:textSize="13sp" />
 
-    <!-- 差異對比（不相符時顯示，逐列由程式加入） -->
+    <!-- 差異對比（不相符時顯示，逐列由程式加入；只列歸屬部門） -->
     <LinearLayout
         android:id="@+id/result_diff"
         android:layout_width="match_parent"
@@ -33,22 +55,42 @@
         android:layout_marginTop="10dp"
         android:visibility="gone" />
 
-    <Button
-        android:id="@+id/result_confirm"
-        android:layout_width="match_parent"
+    <!-- 狀態標籤：已寫入 / 尚未寫入・待確認 -->
+    <TextView
+        android:id="@+id/result_badge"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="14dp"
-        android:textColor="@color/text_on_primary"
+        android:layout_marginTop="8dp"
+        android:textSize="11sp"
+        android:textStyle="bold"
         android:visibility="gone" />
 
-    <Button
-        android:id="@+id/result_dismiss"
+    <!-- 操作列：僅「盤盈（清單外編號）」顯示，需人工確認才落檔 -->
+    <LinearLayout
+        android:id="@+id/result_actions"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:text="略過（不寫入）"
-        android:textColor="@color/text_secondary"
-        android:background="@android:color/transparent"
-        android:visibility="gone" />
+        android:orientation="horizontal"
+        android:layout_marginTop="14dp"
+        android:visibility="gone">
+
+        <Button
+            android:id="@+id/result_dismiss"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:text="略過"
+            android:textColor="@color/text_secondary"
+            android:background="@android:color/transparent" />
+
+        <Button
+            android:id="@+id/result_confirm"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="@color/text_on_primary" />
+
+    </LinearLayout>
 
 </LinearLayout>

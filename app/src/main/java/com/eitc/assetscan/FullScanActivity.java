@@ -42,9 +42,11 @@ import java.util.List;
 /**
  * 全盤掃描頁（方案 A：相機全螢幕、連續掃描、最少觸碰）。
  *
- * <p>掃描結果一律以底部結果卡回饋：相符綠卡自動消散、重複橘卡自動消散、
- * 不相符紅卡需確認、盤盈（清單外編號）確認卡需確認新增。底部操作列集中
- * 補光／拍照存證／返回。舊的可編輯表單與歷史導覽已移除。
+ * <p>掃描結果一律以底部結果卡回饋，持續顯示到下一筆格式正確的財產被掃描到：
+ * 相符綠卡、重複橘卡即時顯示且不阻塞；不相符（部門）紅卡掃到當下即自動落檔，
+ * 同樣不阻塞；只有盤盈（清單外編號）需按「確認寫入不相符」才落檔，是唯一會
+ * 暫停相機的一種。底部操作列集中補光／拍照存證／返回。舊的可編輯表單與歷史
+ * 導覽已移除。
  */
 public class FullScanActivity extends AppCompatActivity {
 
@@ -68,7 +70,7 @@ public class FullScanActivity extends AppCompatActivity {
 
     private long lastScanTime  = 0;
     private String lastScannedRaw = "";
-    private boolean awaitingConfirm = false;  // 不相符／盤盈卡等待確認／略過期間，暫停處理後續掃描
+    private boolean awaitingConfirm = false;  // 盤盈卡等待確認／略過期間，暫停處理後續掃描
 
     private QrScanner scanner;           // 相機 + 解碼管線（deep module）
     private ScanFeedback feedback;       // 聲音＋震動回饋
@@ -228,29 +230,18 @@ public class FullScanActivity extends AppCompatActivity {
                 }
 
                 if (r.outcome == ScanClassifier.Outcome.MATCHED) {
-                    // 相符：即時落檔，綠卡自動消散
+                    // 相符：即時落檔，綠卡持續顯示到下一筆
                     AssetRepository.full().recordCheck(asset, Asset.Status.MATCHED);
                     if (scannerOverlay != null) scannerOverlay.flashSuccess();
                     feedback.success();
                     resultCard.showSuccess("✅ 盤點成功", asset.id + "　" + asset.name);
                 } else {
-                    // 不相符：先不落檔，紅卡列差異對比，確認才寫；期間暗遮罩暫停掃描。
+                    // 不相符（部門）：不需人工確認，掃到當下就落檔；紅卡列部門差異，不阻塞掃描。
+                    AssetRepository.full().recordCheck(asset, Asset.Status.UNMATCHED);
                     if (scannerOverlay != null) scannerOverlay.flashError();
                     feedback.unmatched();
-                    awaitingConfirm = true;
-                    setAwaiting(true);
                     ScannedTag scanned = ScannedTag.parse(raw);
-                    resultCard.showUnmatched("⚠️ 部門或地點不相符", scanned, asset,
-                            () -> {   // 確認寫入不相符
-                                AssetRepository.full().recordCheck(asset, Asset.Status.UNMATCHED);
-                                setAwaiting(false);
-                                awaitingConfirm = false;
-                                updateProgressChip();
-                            },
-                            () -> {   // 略過（不寫入）
-                                setAwaiting(false);
-                                awaitingConfirm = false;
-                            });
+                    resultCard.showUnmatchedWritten("⚠️ 不相符（部門）", scanned, asset);
                 }
                 break;
             }
@@ -260,18 +251,17 @@ public class FullScanActivity extends AppCompatActivity {
                 feedback.unmatched();
                 awaitingConfirm = true;
                 setAwaiting(true);
-                String detail = r.id + "　" + safe(r.name) + "\n"
-                        + safe(r.department) + " · " + safe(r.location);
-                resultCard.showConfirm("⚠️ 此編號不在清單", detail, "確認新增（不相符）",
+                String detail = r.id + "　" + safe(r.name) + "\n" + safe(r.department);
+                resultCard.showConfirm("⚠️ 此編號不在清單", detail, "確認新增",
                         R.color.status_warning_bg, R.color.status_warning,
                         () -> {   // 確認新增為不相符
-                            Asset newAsset = new Asset(r.id, r.name, r.department, r.location,
+                            Asset newAsset = new Asset(r.id, r.name, r.department, "",
                                     Asset.Status.UNCHECKED, "");
                             AssetRepository.full().addChecked(newAsset, Asset.Status.UNMATCHED);
                             setAwaiting(false);
                             awaitingConfirm = false;
                             updateProgressChip();
-                            Toast.makeText(this, "⚠️ 已新增（不相符）：" + r.id, Toast.LENGTH_SHORT).show();
+                            Toast.makeText(this, "⚠️ 已新增：" + r.id, Toast.LENGTH_SHORT).show();
                         },
                         () -> {   // 略過
                             setAwaiting(false);
@@ -324,7 +314,6 @@ public class FullScanActivity extends AppCompatActivity {
         chipTorch.setBackgroundResource(on ? R.drawable.bg_scan_chip_on : R.drawable.bg_scan_chip);
         icTorch.setImageTintList(ColorStateList.valueOf(
                 ContextCompat.getColor(this, on ? R.color.scan_torch_on : R.color.scan_ico_dim)));
-        lblTorch.setText(on ? "補光開" : "補光");
         lblTorch.setTextColor(ContextCompat.getColor(this,
                 on ? R.color.scan_torch_on : R.color.scan_label));
     }

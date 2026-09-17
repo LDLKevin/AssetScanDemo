@@ -8,14 +8,14 @@ import java.util.List;
  * 掃描判定：把「掃到的原始字串 + 目前財產清單 + id 格式規則」判成四種結果之一。
  * 純邏輯，不碰相機／UI，可用單元測試涵蓋。
  *
- * QR 解析格式：{@code id;name;department;location}
+ * QR 解析格式：{@code id;name;department}
  */
 public final class ScanClassifier {
 
     public enum Outcome {
         IGNORED_INVALID, // id 不成格式 → 誤觸，靜默忽略
-        MATCHED,         // 在清單、部門+地點相符
-        UNMATCHED,       // 在清單、部門或地點不符
+        MATCHED,         // 在清單、部門相符
+        UNMATCHED,       // 在清單、部門不符
         SURPLUS          // 格式正確但不在清單 → 盤盈（未列入清單）
     }
 
@@ -32,16 +32,14 @@ public final class ScanClassifier {
         public final String id;
         public final String name;
         public final String department;
-        public final String location;
 
         private Result(Outcome outcome, Asset asset,
-                       String id, String name, String department, String location) {
+                       String id, String name, String department) {
             this.outcome    = outcome;
             this.asset      = asset;
             this.id         = id;
             this.name       = name;
             this.department = department;
-            this.location   = location;
         }
     }
 
@@ -53,7 +51,7 @@ public final class ScanClassifier {
 
         // 誤觸：id 空或不成格式 → 靜默忽略
         if (id.isEmpty() || validator == null || !validator.isValid(id)) {
-            return new Result(Outcome.IGNORED_INVALID, null, id, tag.name, tag.department, tag.location);
+            return new Result(Outcome.IGNORED_INVALID, null, id, tag.name, tag.department);
         }
 
         Asset matched = null;
@@ -68,20 +66,19 @@ public final class ScanClassifier {
 
         // 格式正確但不在清單 → 盤盈
         if (matched == null) {
-            return new Result(Outcome.SURPLUS, null, id, tag.name, tag.department, tag.location);
+            return new Result(Outcome.SURPLUS, null, id, tag.name, tag.department);
         }
 
         Outcome outcome = matches(matched, tag) ? Outcome.MATCHED : Outcome.UNMATCHED;
-        return new Result(outcome, matched, id, tag.name, tag.department, tag.location);
+        return new Result(outcome, matched, id, tag.name, tag.department);
     }
 
     /**
-     * 共用相符規則：財產與掃到的標籤在部門與地點皆相等（null 安全）。
+     * 共用相符規則：財產與掃到的標籤歸屬部門相等（null 安全）。
      * 全盤 {@link #classify} 與抽盤共用，讓比對規則只住一處、不會漂移。
      */
     public static boolean matches(Asset asset, ScannedTag tag) {
-        return equalsSafe(asset.department, tag.department)
-                && equalsSafe(asset.location, tag.location);
+        return equalsSafe(asset.department, tag.department);
     }
 
     private static boolean equalsSafe(String a, String b) {

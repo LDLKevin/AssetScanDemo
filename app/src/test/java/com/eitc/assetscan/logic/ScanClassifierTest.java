@@ -25,16 +25,16 @@ public class ScanClassifierTest {
         List<Asset> list = new ArrayList<>();
         list.add(new Asset("ASSET001", "辦公桌", "財務部", "一樓", Asset.Status.UNCHECKED, ""));
         list.add(new Asset("ASSET002", "螢幕", "資訊室", "二樓", Asset.Status.UNCHECKED, ""));
-        // 部門與地點皆為空的財產，測試「只有 id、無其他欄位」的相符判定
+        // 部門為空的財產，測試「只有 id、無其他欄位」的相符判定
         list.add(new Asset("EMPTY001", "無標地資產", "", "", Asset.Status.UNCHECKED, ""));
         return list;
     }
 
     @Test
-    public void matched_whenIdInListAndDeptLocationEqual() {
+    public void matched_whenIdInListAndDepartmentEqual() {
         List<Asset> list = sampleList();
         ScanClassifier.Result r =
-                ScanClassifier.classify("ASSET001;辦公桌;財務部;一樓", list, validator);
+                ScanClassifier.classify("ASSET001;辦公桌;財務部", list, validator);
 
         assertEquals(ScanClassifier.Outcome.MATCHED, r.outcome);
         assertSame(list.get(0), r.asset);
@@ -44,19 +44,20 @@ public class ScanClassifierTest {
     public void unmatched_whenDepartmentDiffers() {
         List<Asset> list = sampleList();
         ScanClassifier.Result r =
-                ScanClassifier.classify("ASSET001;辦公桌;總務科;一樓", list, validator);
+                ScanClassifier.classify("ASSET001;辦公桌;總務科", list, validator);
 
         assertEquals(ScanClassifier.Outcome.UNMATCHED, r.outcome);
         assertSame(list.get(0), r.asset);
     }
 
     @Test
-    public void unmatched_whenLocationDiffers() {
+    public void matched_whenOnlyLocationWouldHaveDiffered_locationNotCompared() {
+        // 地點已退出比對：即使清單地點與掃到的（已無 location 欄位）不同，只要部門相符仍算相符。
         List<Asset> list = sampleList();
         ScanClassifier.Result r =
-                ScanClassifier.classify("ASSET002;螢幕;資訊室;三樓", list, validator);
+                ScanClassifier.classify("ASSET002;螢幕;資訊室", list, validator);
 
-        assertEquals(ScanClassifier.Outcome.UNMATCHED, r.outcome);
+        assertEquals(ScanClassifier.Outcome.MATCHED, r.outcome);
         assertSame(list.get(1), r.asset);
     }
 
@@ -64,14 +65,13 @@ public class ScanClassifierTest {
     public void surplus_whenValidFormatButNotInList() {
         List<Asset> list = sampleList();
         ScanClassifier.Result r =
-                ScanClassifier.classify("ZZZZ999;冷氣機;採購科;四樓", list, validator);
+                ScanClassifier.classify("ZZZZ999;冷氣機;採購科", list, validator);
 
         assertEquals(ScanClassifier.Outcome.SURPLUS, r.outcome);
         assertNull(r.asset);
         assertEquals("ZZZZ999", r.id);
         assertEquals("冷氣機", r.name);
         assertEquals("採購科", r.department);
-        assertEquals("四樓", r.location);
     }
 
     @Test
@@ -87,7 +87,7 @@ public class ScanClassifierTest {
     public void ignored_whenIdTooShort() {
         List<Asset> list = sampleList();
         ScanClassifier.Result r =
-                ScanClassifier.classify("AB;辦公桌;財務部;一樓", list, validator);
+                ScanClassifier.classify("AB;辦公桌;財務部", list, validator);
 
         assertEquals(ScanClassifier.Outcome.IGNORED_INVALID, r.outcome);
     }
@@ -100,9 +100,9 @@ public class ScanClassifierTest {
     }
 
     @Test
-    public void matched_whenOnlyIdPresent_andListedAssetHasEmptyDeptLocation() {
+    public void matched_whenOnlyIdPresent_andListedAssetHasEmptyDepartment() {
         List<Asset> list = sampleList();
-        // 只有 id、沒有分號其他欄位 → dept/location 解析為空，與 EMPTY001 的空欄位相符
+        // 只有 id、沒有分號其他欄位 → department 解析為空，與 EMPTY001 的空欄位相符
         ScanClassifier.Result r =
                 ScanClassifier.classify("EMPTY001", list, validator);
 
@@ -110,38 +110,31 @@ public class ScanClassifierTest {
         assertSame(list.get(2), r.asset);
     }
 
-    // ── 共用相符規則 matches()（全盤與抽盤共用）─────────────
+    // ── 共用相符規則 matches()（全盤與抽盤共用，只比對歸屬部門）─────────
 
     @Test
-    public void matches_trueWhenDeptAndLocationEqual() {
+    public void matches_trueWhenDepartmentEqual() {
         Asset asset = new Asset("ASSET001", "辦公桌", "財務部", "一樓", Asset.Status.UNCHECKED, "");
-        ScannedTag tag = ScannedTag.parse("ASSET001;辦公桌;財務部;一樓");
+        ScannedTag tag = ScannedTag.parse("ASSET001;辦公桌;財務部");
         assertTrue(ScanClassifier.matches(asset, tag));
     }
 
     @Test
     public void matches_falseWhenDepartmentDiffers() {
         Asset asset = new Asset("ASSET001", "辦公桌", "財務部", "一樓", Asset.Status.UNCHECKED, "");
-        ScannedTag tag = ScannedTag.parse("ASSET001;辦公桌;總務科;一樓");
+        ScannedTag tag = ScannedTag.parse("ASSET001;辦公桌;總務科");
         assertFalse(ScanClassifier.matches(asset, tag));
     }
 
     @Test
-    public void matches_falseWhenLocationDiffers() {
-        Asset asset = new Asset("ASSET001", "辦公桌", "財務部", "一樓", Asset.Status.UNCHECKED, "");
-        ScannedTag tag = ScannedTag.parse("ASSET001;辦公桌;財務部;三樓");
-        assertFalse(ScanClassifier.matches(asset, tag));
-    }
-
-    @Test
-    public void matches_trueWhenBothEmpty_nullSafe() {
-        // 財產欄位為 null、標籤解析為空字串 → 視為不相等？equalsSafe：null vs "" 不等
-        Asset nullFields = new Asset("EMPTY001", "無標地資產", null, null, Asset.Status.UNCHECKED, "");
+    public void matches_trueWhenBothDepartmentEmpty_nullSafe() {
+        // 財產部門為 null、標籤解析為空字串 → 視為不相等（null vs "" 不等）
+        Asset nullDept = new Asset("EMPTY001", "無標地資產", null, null, Asset.Status.UNCHECKED, "");
         ScannedTag emptyTag = ScannedTag.parse("EMPTY001");
-        assertFalse(ScanClassifier.matches(nullFields, emptyTag));
+        assertFalse(ScanClassifier.matches(nullDept, emptyTag));
 
-        // 財產空字串、標籤空字串 → 相等
-        Asset emptyFields = new Asset("EMPTY001", "無標地資產", "", "", Asset.Status.UNCHECKED, "");
-        assertTrue(ScanClassifier.matches(emptyFields, emptyTag));
+        // 財產部門為空字串、標籤部門為空字串 → 相等
+        Asset emptyDept = new Asset("EMPTY001", "無標地資產", "", "", Asset.Status.UNCHECKED, "");
+        assertTrue(ScanClassifier.matches(emptyDept, emptyTag));
     }
 }

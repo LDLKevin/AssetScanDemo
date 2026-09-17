@@ -252,7 +252,7 @@ public class SamplingActivity extends AppCompatActivity {
                 Log.e(TAG, "讀取失敗", e);
                 runOnUiThread(() -> {
                     progressLoading.setVisibility(View.GONE);
-                    showError("無法讀取 CSV，請確認檔案未損毀且為 Big5 編碼");
+                    showError("無法讀取 CSV，請確認檔案未損毀且為 UTF-8 編碼");
                 });
             }
         }).start();

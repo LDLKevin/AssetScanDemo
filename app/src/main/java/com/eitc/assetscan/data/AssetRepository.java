@@ -88,7 +88,7 @@ public class AssetRepository {
     }
 
     /**
-     * 若有未落檔變更則寫一次檔（含 Big5 編碼、序列化先行）。
+     * 若有未落檔變更則寫一次檔（含 UTF-8 編碼、序列化先行）。
      * 會阻塞做 I/O，呼叫端請放在背景執行緒。回傳是否真的寫了檔。
      */
     public synchronized boolean flush(ContentResolver resolver) throws Exception {
