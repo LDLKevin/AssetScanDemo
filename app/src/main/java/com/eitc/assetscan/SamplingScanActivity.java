@@ -29,7 +29,6 @@ import com.eitc.assetscan.camera.QrScanner;
 import com.eitc.assetscan.data.AssetRepository;
 import com.eitc.assetscan.feedback.ScanFeedback;
 import com.eitc.assetscan.logic.AssetIdFormat;
-import com.eitc.assetscan.logic.ScanClassifier;
 import com.eitc.assetscan.logic.ScannedTag;
 import com.eitc.assetscan.model.Asset;
 import com.eitc.assetscan.ui.ScanResultCard;
@@ -42,7 +41,7 @@ import java.util.List;
 public class SamplingScanActivity extends AppCompatActivity {
 
     private static final int REQ_CAMERA = 100;
-    private static final long TOAST_COOLDOWN_MS = 1500;
+    private static final long TOAST_COOLDOWN_MS = 3000;
     // 掃描提示貼著取景框下緣的間距
     private static final float HINT_GAP_DP = 4f;
 
@@ -236,26 +235,12 @@ public class SamplingScanActivity extends AppCompatActivity {
         String scannedId = tag.id;
 
         if (scannedId.equals(targetId)) {
-            Asset target = findTarget();
-            boolean matched = target != null && ScanClassifier.matches(target, tag);
-
-            if (matched) {
-                // ✅ 相符：綠卡短暫停留後回傳（由抽盤主畫面落檔）
-                finishing = true;
-                if (scannerOverlay != null) scannerOverlay.flashSuccess();
-                feedback.success();
-                resultCard.showSuccess("✅ 相符", targetId + "　" + safe(targetName));
-                returnRawDelayed(raw, 1200L);
-            } else {
-                // ⚠️ 目標不符（部門）：不需確認，立即回傳落檔；紅卡列部門差異，短暫停留後關閉。
-                finishing = true;
-                if (scannerOverlay != null) scannerOverlay.flashError();
-                feedback.unmatched();
-                if (target != null) {
-                    resultCard.showUnmatchedWritten("⚠️ 不相符（部門）", tag, target);
-                }
-                returnRawDelayed(raw, 1200L);
-            }
+            // ✅ 相符：只比對財產編號，掃到目標編號即直接落檔已盤點（QR 內容不再影響判定）。
+            finishing = true;
+            if (scannerOverlay != null) scannerOverlay.flashSuccess();
+            feedback.success();
+            resultCard.showSuccess("✅ 相符", targetId + "　" + safe(targetName));
+            returnRawDelayed(raw, 1200L);
         } else if (AssetIdFormat.isValid(scannedId)) {
             // 掃到別的（成格式的）資產：橘卡提示、不寫入、繼續掃；不成格式的雜訊靜默忽略
             long now = System.currentTimeMillis();
@@ -267,7 +252,7 @@ public class SamplingScanActivity extends AppCompatActivity {
         }
     }
 
-    /** 從記憶體清單找出目前目標資產（取其部門以判定相符）。 */
+    /** 從記憶體清單找出目前目標資產（僅供畫面顯示部門・地點參考，不參與相符判定）。 */
     private Asset findTarget() {
         List<Asset> list = AssetRepository.sampling().getAssets();
         if (list != null) {

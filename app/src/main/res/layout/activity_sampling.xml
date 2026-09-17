@@ -211,21 +211,6 @@
                     android:clickable="true"
                     android:focusable="true"
                     android:background="?attr/selectableItemBackground" />
-
-                <TextView
-                    android:id="@+id/tab_unmatched"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:gravity="center"
-                    android:paddingVertical="12dp"
-                    android:text="不相符 0"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="13sp"
-                    android:textStyle="bold"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:background="?attr/selectableItemBackground" />
             </LinearLayout>
 
             <FrameLayout

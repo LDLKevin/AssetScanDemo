@@ -29,7 +29,6 @@ import com.eitc.assetscan.data.AssetRepository;
 import com.eitc.assetscan.data.CsvFolder;
 import com.eitc.assetscan.data.CsvManager;
 import com.eitc.assetscan.data.FolderAccess;
-import com.eitc.assetscan.logic.ScanClassifier;
 import com.eitc.assetscan.logic.ScannedTag;
 import com.eitc.assetscan.model.Asset;
 import com.eitc.assetscan.ui.AssetAdapter;
@@ -39,7 +38,7 @@ import java.util.List;
 
 /**
  * 抽盤主畫面：與全盤一致的財產列表（可篩選）。點任一列 → 以該筆為目標進入抽盤掃描，
- * 掃描相符／確認不符後回寫並即時更新列表。
+ * 只比對財產編號，掃到目標編號即直接回寫已盤點並即時更新列表。
  */
 public class SamplingActivity extends AppCompatActivity {
 
@@ -51,12 +50,12 @@ public class SamplingActivity extends AppCompatActivity {
     private final List<Asset> filteredAssets = new ArrayList<>();
     private AssetAdapter adapter;
 
-    private enum Filter { ALL, UNCHECKED, MATCHED, UNMATCHED }
+    private enum Filter { ALL, UNCHECKED, MATCHED }
     private Filter currentFilter = Filter.ALL;
 
     private TextView tvFilename, tvProgressCount, tvProgressDetail, tvProgressPct, tvEmpty;
     private ProgressBar pbProgress;
-    private TextView tabAll, tabUnchecked, tabMatched, tabUnmatched;
+    private TextView tabAll, tabUnchecked, tabMatched;
     private View tabIndicator;
     private ProgressBar progressLoading;
     private RecyclerView recyclerView;
@@ -111,7 +110,6 @@ public class SamplingActivity extends AppCompatActivity {
         tabAll       = findViewById(R.id.tab_all);
         tabUnchecked = findViewById(R.id.tab_unchecked);
         tabMatched   = findViewById(R.id.tab_matched);
-        tabUnmatched = findViewById(R.id.tab_unmatched);
         tabIndicator = findViewById(R.id.tab_indicator);
 
         findViewById(R.id.btn_back).setOnClickListener(v -> finish());
@@ -120,7 +118,6 @@ public class SamplingActivity extends AppCompatActivity {
         tabAll.setOnClickListener(v -> selectFilter(Filter.ALL, tabAll));
         tabUnchecked.setOnClickListener(v -> selectFilter(Filter.UNCHECKED, tabUnchecked));
         tabMatched.setOnClickListener(v -> selectFilter(Filter.MATCHED, tabMatched));
-        tabUnmatched.setOnClickListener(v -> selectFilter(Filter.UNMATCHED, tabUnmatched));
 
         // 還原上次記住的資料夾（Plan A）：有的話載入時就不必再選資料夾／再授權
         if (AssetRepository.getTreeUri() == null) {
@@ -277,6 +274,7 @@ public class SamplingActivity extends AppCompatActivity {
     }
 
     // ── 處理掃描結果（回寫 + 更新列表）───────────────────
+    // 只比對財產編號：掃到目標編號即直接落檔已盤點，不再比對 QR 內容。
     private void handleScanResult(String raw) {
         if (assets == null) return;
         ScannedTag tag = ScannedTag.parse(raw);
@@ -287,15 +285,11 @@ public class SamplingActivity extends AppCompatActivity {
         }
         if (target == null) return;
 
-        boolean isMatched = ScanClassifier.matches(target, tag);
-        AssetRepository.sampling().recordCheck(target,
-                isMatched ? Asset.Status.MATCHED : Asset.Status.UNMATCHED);
+        AssetRepository.sampling().recordCheck(target, Asset.Status.MATCHED);
 
         refreshList();
         updateProgress();
-        Toast.makeText(this,
-                isMatched ? "✅ 盤點成功（相符）" : "⚠️ 盤點完成（不相符）",
-                Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "✅ 盤點成功", Toast.LENGTH_SHORT).show();
     }
 
     // ── 篩選 / 清單 ──────────────────────────────────────
@@ -311,7 +305,6 @@ public class SamplingActivity extends AppCompatActivity {
         tabAll.setTextColor(tab == tabAll ? active : inactive);
         tabUnchecked.setTextColor(tab == tabUnchecked ? active : inactive);
         tabMatched.setTextColor(tab == tabMatched ? active : inactive);
-        tabUnmatched.setTextColor(tab == tabUnmatched ? active : inactive);
 
         tab.post(() -> {
             ViewGroup.LayoutParams lp = tabIndicator.getLayoutParams();
@@ -329,7 +322,6 @@ public class SamplingActivity extends AppCompatActivity {
             switch (currentFilter) {
                 case UNCHECKED: include = a.status == Asset.Status.UNCHECKED; break;
                 case MATCHED:   include = a.status == Asset.Status.MATCHED;   break;
-                case UNMATCHED: include = a.status == Asset.Status.UNMATCHED; break;
                 case ALL:
                 default:        include = true;
             }
@@ -349,7 +341,6 @@ public class SamplingActivity extends AppCompatActivity {
         switch (currentFilter) {
             case UNCHECKED: return "沒有未盤點的資產";
             case MATCHED:   return "沒有已盤點的資產";
-            case UNMATCHED: return "沒有不相符的資產";
             default:        return "尚未載入資料";
         }
     }
@@ -359,19 +350,19 @@ public class SamplingActivity extends AppCompatActivity {
         int total = assets.size();
         long unchecked = assets.stream().filter(a -> a.status == Asset.Status.UNCHECKED).count();
         long matched   = assets.stream().filter(a -> a.status == Asset.Status.MATCHED).count();
+        // 相容舊資料：先前版本可能寫過 UNMATCHED，仍計入已盤點進度，但不再另闢頁籤呈現。
         long unmatched = assets.stream().filter(a -> a.status == Asset.Status.UNMATCHED).count();
         long checked   = matched + unmatched;
         int pct = total > 0 ? (int) Math.round(checked * 100.0 / total) : 0;
 
         tvProgressCount.setText(checked + " / " + total + " 筆");
         pbProgress.setProgress(pct);
-        tvProgressDetail.setText("已盤點 " + matched + "、不相符 " + unmatched);
+        tvProgressDetail.setText("已盤點 " + checked);
         tvProgressPct.setText(pct + "%" + (pct == 100 ? "  ✓ 完成" : ""));
 
         tabAll.setText("全部 " + total);
         tabUnchecked.setText("未盤點 " + unchecked);
         tabMatched.setText("已盤點 " + matched);
-        tabUnmatched.setText("不相符 " + unmatched);
     }
 
     private void setFilename(String name) {
